@@ -1,4 +1,5 @@
-// Zen Center: Box Breathing visualizer + Pomodoro timer + Resource library
+// Zen Center: Box Breathing, Meditation Timer, Pomodoro + Resource library
+import { fetchOrCreateTodayHabits, updateHabit, addXp } from '../lib/supabase.js';
 
 let pomodoroInterval  = null;
 let pomodoroSeconds   = 25 * 60;
@@ -9,6 +10,19 @@ let breathPhase       = 0; // 0=inhale 1=hold 2=exhale 3=hold
 let breathTimer       = null;
 const BREATH_PHASES   = ['Inhale', 'Hold', 'Exhale', 'Hold'];
 const BREATH_DURATION = 4000; // 4 seconds each
+
+// Meditation timer state
+let medInterval  = null;
+let medRemaining = 5 * 60;
+let medTarget    = 5 * 60;
+let medRunning   = false;
+let medBreathDir = 1; // 1=expand, -1=contract
+
+const MED_PRESETS = [
+  { label: '3 min',  seconds: 3  * 60 },
+  { label: '5 min',  seconds: 5  * 60 },
+  { label: '10 min', seconds: 10 * 60 },
+];
 
 const RESOURCES = [
   {
@@ -166,6 +180,70 @@ export function renderZen() {
         </div>
       </div>
 
+      <!-- Meditation Timer -->
+      <div class="bg-navy-600 rounded-2xl border border-purple-500/20 p-6">
+        <h3 class="text-white font-semibold mb-4 flex items-center gap-2">
+          <i class="fa-solid fa-spa text-purple-400"></i>
+          Meditation Timer
+          <span id="med-status-badge" class="ml-2 text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 font-medium">
+            Ready
+          </span>
+        </h3>
+
+        <!-- Preset buttons -->
+        <div class="flex gap-2 mb-5">
+          ${MED_PRESETS.map((p, i) => `
+            <button class="med-preset flex-1 text-xs py-2 rounded-lg transition-colors font-medium
+                           ${i === 1 ? 'bg-purple-500/25 text-purple-400 border border-purple-500/30' : 'bg-slate-700 text-slate-400 border border-slate-600 hover:border-purple-500/30'}"
+              data-seconds="${p.seconds}">${p.label}</button>
+          `).join('')}
+        </div>
+
+        <!-- Breathing circle + countdown -->
+        <div class="flex flex-col items-center mb-5">
+          <div class="relative flex items-center justify-center">
+            <div id="med-circle"
+              class="w-36 h-36 rounded-full border-4 border-purple-500/30 flex items-center justify-center
+                     transition-all ease-in-out"
+              style="background: radial-gradient(circle, rgba(168,85,247,0.12) 0%, transparent 70%);
+                     transition-duration: 4000ms;">
+              <div class="text-center">
+                <p id="med-time" class="text-purple-300 text-3xl font-mono font-bold tabular-nums">5:00</p>
+                <p class="text-slate-500 text-xs mt-1">remaining</p>
+              </div>
+            </div>
+            <div id="med-ring"
+              class="absolute w-40 h-40 rounded-full border border-purple-500/15 pointer-events-none"
+              style="transition: all 4000ms ease-in-out;"></div>
+          </div>
+          <p id="med-instruction" class="text-slate-400 text-sm text-center mt-4 max-w-xs leading-relaxed">
+            Select duration, then press Start.
+          </p>
+        </div>
+
+        <!-- Progress bar -->
+        <div class="w-full bg-slate-700/60 rounded-full h-1.5 mb-5 overflow-hidden">
+          <div id="med-progress-bar"
+            class="h-1.5 rounded-full bg-gradient-to-r from-purple-600 to-purple-400 transition-all duration-1000"
+            style="width: 0%"></div>
+        </div>
+
+        <!-- Controls -->
+        <div class="flex gap-3">
+          <button id="med-start"
+            class="flex-1 bg-purple-600 hover:bg-purple-500 text-white font-semibold px-6 py-2.5 rounded-xl transition-colors">
+            <i class="fa-solid fa-play mr-2"></i>Start
+          </button>
+          <button id="med-stop" class="hidden flex-1 bg-slate-600 hover:bg-slate-500 text-white font-semibold px-6 py-2.5 rounded-xl transition-colors">
+            <i class="fa-solid fa-stop mr-2"></i>Stop
+          </button>
+        </div>
+
+        <div id="med-complete" class="hidden mt-3 p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-center text-sm text-purple-300">
+          <i class="fa-solid fa-circle-check mr-2"></i>Meditation complete — <strong>+10 XP</strong> awarded!
+        </div>
+      </div>
+
       <!-- Pomodoro Timer -->
       <div class="bg-navy-600 rounded-2xl border border-slate-700/50 p-6">
         <h3 class="text-white font-semibold mb-5 flex items-center gap-2">
@@ -273,8 +351,9 @@ export function renderZen() {
   `;
 }
 
-export function initZen() {
+export function initZen(userId = null) {
   initBreathing();
+  initMeditation(userId);
   initPomodoro();
 }
 
@@ -403,6 +482,195 @@ function resetBreathCircle() {
   const ring   = document.getElementById('breath-ring');
   if (circle) { circle.style.transform = ''; circle.style.borderColor = ''; }
   if (ring)   { ring.style.transform   = ''; ring.style.opacity       = ''; }
+}
+
+// ─── Meditation Timer ─────────────────────────────────────────
+
+function initMeditation(userId) {
+  const startBtn   = document.getElementById('med-start');
+  const stopBtn    = document.getElementById('med-stop');
+  const completeEl = document.getElementById('med-complete');
+  const badge      = document.getElementById('med-status-badge');
+  const presets    = document.querySelectorAll('.med-preset');
+
+  // Preset selection
+  presets.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (medRunning) return;
+      const secs = parseInt(btn.dataset.seconds, 10);
+      medTarget    = secs;
+      medRemaining = secs;
+      _updateMedDisplay();
+      _updateMedProgress(0);
+      presets.forEach((b) => {
+        b.className = b.className
+          .replace('bg-purple-500/25 text-purple-400 border-purple-500/30', '')
+          .replace('bg-slate-700 text-slate-400 border-slate-600', '')
+          + ' bg-slate-700 text-slate-400 border border-slate-600';
+      });
+      btn.className = btn.className
+        .replace('bg-slate-700 text-slate-400 border-slate-600', '')
+        + ' bg-purple-500/25 text-purple-400 border-purple-500/30';
+      if (completeEl) completeEl.classList.add('hidden');
+    });
+  });
+
+  startBtn?.addEventListener('click', () => {
+    if (medRunning) return;
+    medRunning = true;
+    startBtn.classList.add('hidden');
+    stopBtn?.classList.remove('hidden');
+    if (badge)   { badge.textContent = 'Running'; badge.className = 'ml-2 text-xs px-2 py-0.5 rounded-full bg-purple-500/30 text-purple-300 font-medium'; }
+    if (completeEl) completeEl.classList.add('hidden');
+    _playMedBell();
+    _updateMedInstruction('Breathe gently. Let thoughts pass without holding.');
+    _startMedBreath();
+    _runMedTimer(userId);
+  });
+
+  stopBtn?.addEventListener('click', () => {
+    _stopMeditation();
+    _updateMedInstruction('Session paused. Press Start to continue.');
+    if (badge) { badge.textContent = 'Stopped'; badge.className = 'ml-2 text-xs px-2 py-0.5 rounded-full bg-slate-600 text-slate-400 font-medium'; }
+  });
+
+  // Initialize display
+  _updateMedDisplay();
+}
+
+function _runMedTimer(userId) {
+  const totalSecs = medTarget;
+  clearInterval(medInterval);
+
+  medInterval = setInterval(() => {
+    if (!medRunning) return;
+    medRemaining--;
+    _updateMedDisplay();
+    _updateMedProgress((totalSecs - medRemaining) / totalSecs);
+
+    if (medRemaining <= 0) {
+      _stopMeditation();
+      _playMedBell(true);
+      _onMedComplete(userId, true);
+    }
+  }, 1000);
+}
+
+function _stopMeditation() {
+  medRunning = false;
+  clearInterval(medInterval);
+  medInterval = null;
+  document.getElementById('med-start')?.classList.remove('hidden');
+  document.getElementById('med-stop')?.classList.add('hidden');
+  _stopMedBreath();
+}
+
+function _onMedComplete(userId, autoMark) {
+  const completeEl = document.getElementById('med-complete');
+  const badge      = document.getElementById('med-status-badge');
+  if (completeEl) completeEl.classList.remove('hidden');
+  if (badge) { badge.textContent = 'Done ✓'; badge.className = 'ml-2 text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-medium'; }
+  _updateMedInstruction('Well done. Sit with this stillness for a moment.');
+
+  if (autoMark && userId) {
+    // Auto-mark meditation habit with ±10s tolerance (remaining is 0 here)
+    fetchOrCreateTodayHabits(userId).then((row) => {
+      if (row && !row.meditation) {
+        return updateHabit(row.id, 'meditation', true).then(() => addXp(userId, 10));
+      }
+    }).catch((err) => console.warn('[Zen] Auto-mark meditation failed:', err));
+  }
+}
+
+function _updateMedDisplay() {
+  const m  = Math.floor(medRemaining / 60).toString().padStart(2, '0');
+  const s  = (medRemaining % 60).toString().padStart(2, '0');
+  const el = document.getElementById('med-time');
+  if (el) el.textContent = `${m}:${s}`;
+}
+
+function _updateMedProgress(fraction) {
+  const bar = document.getElementById('med-progress-bar');
+  if (bar) bar.style.width = `${Math.min(100, fraction * 100)}%`;
+}
+
+function _updateMedInstruction(text) {
+  const el = document.getElementById('med-instruction');
+  if (el) el.textContent = text;
+}
+
+// Slow breathing animation for meditation (4s inhale, 4s exhale)
+let medBreathTimer = null;
+let medBreathPhase = 0; // 0=expand, 1=contract
+
+function _startMedBreath() {
+  _stopMedBreath();
+  medBreathPhase = 0;
+  _runMedBreathCycle();
+}
+
+function _stopMedBreath() {
+  clearTimeout(medBreathTimer);
+  medBreathTimer = null;
+  const circle = document.getElementById('med-circle');
+  const ring   = document.getElementById('med-ring');
+  if (circle) circle.style.transform = '';
+  if (ring)   ring.style.transform = '';
+}
+
+function _runMedBreathCycle() {
+  const circle = document.getElementById('med-circle');
+  const ring   = document.getElementById('med-ring');
+  if (!circle) return;
+
+  if (medBreathPhase === 0) {
+    // Inhale — expand
+    circle.style.transform = 'scale(1.25)';
+    if (ring) ring.style.transform = 'scale(1.45)';
+    _updateMedInstruction('Breathe in slowly through your nose...');
+  } else {
+    // Exhale — contract
+    circle.style.transform = 'scale(0.85)';
+    if (ring) ring.style.transform = 'scale(0.95)';
+    _updateMedInstruction('Exhale gently through your mouth...');
+  }
+
+  medBreathPhase = medBreathPhase === 0 ? 1 : 0;
+
+  if (medRunning) {
+    medBreathTimer = setTimeout(_runMedBreathCycle, 4000);
+  }
+}
+
+// Web Audio API — soft meditation bell
+function _playMedBell(isEnd = false) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+    const playTone = (freq, start, duration, gain = 0.3) => {
+      const osc  = ctx.createOscillator();
+      const amp  = ctx.createGain();
+      osc.connect(amp);
+      amp.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + start);
+      amp.gain.setValueAtTime(0, ctx.currentTime + start);
+      amp.gain.linearRampToValueAtTime(gain, ctx.currentTime + start + 0.05);
+      amp.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + duration);
+      osc.start(ctx.currentTime + start);
+      osc.stop(ctx.currentTime + start + duration);
+    };
+
+    if (isEnd) {
+      // Three gentle bells at end
+      playTone(528, 0,    2.5, 0.35);
+      playTone(396, 0.8,  2.0, 0.25);
+      playTone(528, 1.6,  2.5, 0.3);
+    } else {
+      // Single soft bell at start
+      playTone(396, 0, 2.0, 0.25);
+    }
+  } catch (_) { /* AudioContext not available */ }
 }
 
 // ─── Pomodoro ────────────────────────────────────────────────

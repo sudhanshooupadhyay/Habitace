@@ -18,6 +18,20 @@ let currentUser    = null;
 let currentProfile = null;
 let activeSection  = 'dashboard';
 
+// ─── PWA Install prompt ───────────────────────────────────────
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  // Show the install button if the app shell is already rendered
+  const btn = document.getElementById('pwa-install-btn');
+  if (btn) btn.classList.remove('hidden');
+});
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  document.getElementById('pwa-install-btn')?.classList.add('hidden');
+});
+
 const SECTIONS = ['dashboard', 'vault', 'analytics', 'zen', 'resources'];
 
 // ─── Boot ─────────────────────────────────────────────────────
@@ -123,6 +137,15 @@ function renderAppShell() {
               </span>
             </div>
 
+            <!-- PWA Install button (hidden until beforeinstallprompt fires) -->
+            <button id="pwa-install-btn"
+              class="hidden items-center gap-1.5 bg-indigo-500/10 border border-indigo-500/20
+                     hover:bg-indigo-500/20 rounded-lg px-2 py-1 transition-colors"
+              title="Install app">
+              <i class="fa-solid fa-download text-indigo-400 text-xs"></i>
+              <span class="text-indigo-400 text-xs font-medium hidden sm:inline">Install</span>
+            </button>
+
             <!-- Google avatar + sign-out -->
             <div class="relative group">
               ${(() => {
@@ -208,6 +231,22 @@ function renderAppShell() {
     }
   });
 
+  // PWA install
+  document.getElementById('pwa-install-btn')?.addEventListener('click', async () => {
+    if (!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    const { outcome } = await deferredInstallPrompt.userChoice;
+    if (outcome === 'accepted') {
+      deferredInstallPrompt = null;
+      document.getElementById('pwa-install-btn')?.classList.add('hidden');
+    }
+  });
+
+  // Show install btn if prompt is already queued (re-render case)
+  if (deferredInstallPrompt) {
+    document.getElementById('pwa-install-btn')?.classList.remove('hidden');
+  }
+
   // ── Cross-component events ──────────────────────────────────
   // Focus-area "action" buttons dispatch this to trigger tab navigation
   document.addEventListener('navigate', (e) => navigateTo(e.detail));
@@ -255,8 +294,8 @@ async function navigateTo(section) {
       break;
 
     case 'vault':
-      main.innerHTML = renderVault();
-      await initVault(currentUser.id);
+      main.innerHTML = renderVault(currentProfile?.has_anxiety !== false);
+      await initVault(currentUser.id, currentProfile?.has_anxiety !== false);
       break;
 
     case 'analytics':
@@ -266,7 +305,7 @@ async function navigateTo(section) {
 
     case 'zen':
       main.innerHTML = renderZen();
-      initZen();
+      initZen(currentUser.id);
       break;
 
     case 'resources':

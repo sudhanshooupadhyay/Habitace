@@ -194,6 +194,49 @@ export async function fetchTodaySleep(userId) {
   return data;
 }
 
+// Manual sleep logging (replaces Garmin webhook for users without a Garmin)
+export async function saveTodaySleepManual(userId, hoursSlept) {
+  const today = new Date().toISOString().split('T')[0];
+  const score =
+    hoursSlept < 5 ? 20 :
+    hoursSlept < 6 ? 45 :
+    hoursSlept < 7 ? 70 :
+    hoursSlept < 8 ? 88 : 100;
+
+  const { error } = await supabase
+    .from('daily_metrics')
+    .upsert(
+      {
+        user_id:            userId,
+        date:               today,
+        garmin_sleep_hours: hoursSlept,
+        garmin_sleep_score: score,
+        synced_at:          new Date().toISOString(),
+      },
+      { onConflict: 'user_id,date' }
+    );
+  if (error) throw error;
+  return { hours: hoursSlept, score };
+}
+
+// Update the user's username in the users table
+export async function saveUsername(userId, username) {
+  const { error } = await supabase
+    .from('users')
+    .update({ username })
+    .eq('id', userId);
+  if (error) throw error;
+}
+
+// Update the user's interest profile (for personalising Learn tab content)
+export async function saveUserInterests(userId, interests) {
+  const { error } = await supabase
+    .from('users')
+    .update({ interests })
+    .eq('id', userId);
+  if (error) throw error;
+}
+
 export async function fetchSleepRange(userId, days = 3) {
   const since = new Date();
   since.setDate(since.getDate() - days);

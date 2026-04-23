@@ -57,9 +57,17 @@ export const GROUNDING_STATEMENTS = [
   },
 ];
 
+// Date-seeded quote — same quote all day, rotates daily
+export function getDailyQuote(timeOfDay = 'morning') {
+  const parts = new Date().toISOString().split('T')[0].split('-');
+  const seed  = parts.reduce((acc, v) => acc + parseInt(v, 10), 0);
+  const pool  = timeOfDay === 'evening' ? EVENING_QUOTES : MORNING_QUOTES;
+  return pool[seed % pool.length];
+}
+
+// Kept for backward compat — now returns the daily (seeded) quote
 export function getRandomQuote(timeOfDay = 'morning') {
-  const pool = timeOfDay === 'evening' ? EVENING_QUOTES : MORNING_QUOTES;
-  return pool[Math.floor(Math.random() * pool.length)];
+  return getDailyQuote(timeOfDay);
 }
 
 export function getRandomGrounding() {

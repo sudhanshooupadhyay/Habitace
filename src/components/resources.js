@@ -264,6 +264,60 @@ const LEARNING_LIBRARY = [
   },
 ];
 
+// ─── Interest keys → learning protocol IDs (for boosting) ────
+const INTEREST_BOOST_MAP = {
+  anxiety:    ['cbt_health_anxiety', 'panic_clinical', 'claire_weekes', 'ocd_erp', 'vagus_nerve', 'cognitive_defusion'],
+  fitness:    ['exercise_mental_health'],
+  breathing:  ['vagus_nerve'],
+  sleep:      ['sleep_anxiety'],
+  mindset:    ['cognitive_defusion', 'exercise_mental_health'],
+  journaling: ['cognitive_defusion'],
+};
+
+// ─── Vice-specific educational content ────────────────────────
+const VICE_LIBRARY = {
+  smoking: [{
+    id: 'quit_smoking', title: 'How to Quit Smoking — Science-Backed Guide',
+    channel: 'Huberman Lab', duration: '10–15 min',
+    url: 'https://www.youtube.com/results?search_query=how+to+quit+smoking+science+brain+nicotine&sp=EgIYBA%3D%3D',
+    icon: 'fa-ban', color: 'red', tagline: 'Nicotine, dopamine, and how to escape.',
+    desc: 'The neuroscience of nicotine addiction — why quitting is hard, the withdrawal timeline, and exactly what works. No motivation speeches — just the brain science and a clear action plan.',
+    topics: ['Nicotine Withdrawal', 'Dopamine Reset', 'Quit Protocol', 'Timeline'],
+  }],
+  alcohol: [{
+    id: 'quit_alcohol', title: 'Alcohol & Your Brain — What Really Happens',
+    channel: 'Huberman Lab', duration: '8–12 min',
+    url: 'https://www.youtube.com/results?search_query=huberman+lab+alcohol+effects+brain+quit&sp=EgIYBA%3D%3D',
+    icon: 'fa-droplet-slash', color: 'amber', tagline: 'Why "moderate drinking" is a myth.',
+    desc: "Huberman's neuroscience breakdown: alcohol disrupts sleep architecture, raises anxiety the following day, and hijacks dopamine in ways that demand escalation. Practical reduction protocol included.",
+    topics: ['Alcohol & Anxiety', 'Sleep Disruption', 'Dopamine Hijack', 'Reduction Plan'],
+  }],
+  gambling: [{
+    id: 'quit_gambling', title: 'Gambling Addiction — Breaking the Loop',
+    channel: 'Therapy in a Nutshell', duration: '8–12 min',
+    url: 'https://www.youtube.com/results?search_query=how+to+stop+gambling+addiction+psychology&sp=EgIYBA%3D%3D',
+    icon: 'fa-dice', color: 'orange', tagline: 'Variable reward is the trap. Here\'s the exit.',
+    desc: 'CBT approach to gambling: why variable reward schedules are more addictive than fixed ones, why losses feel recoverable, and practical strategies to break reinforcement loops.',
+    topics: ['Variable Reward', 'CBT Approach', 'Impulse Control', 'Relapse Prevention'],
+  }],
+  junk_food: [{
+    id: 'quit_junk', title: 'Ultra-Processed Food — How to Reset Your Taste',
+    channel: 'Dr. Robert Lustig', duration: '8–12 min',
+    url: 'https://www.youtube.com/results?search_query=ultra+processed+food+addiction+quit+science&sp=EgIYBA%3D%3D',
+    icon: 'fa-burger', color: 'yellow', tagline: 'Why willpower always fails against junk food.',
+    desc: 'Ultra-processed food hijacks dopamine pathways more than cocaine in animal studies. Covers the brain science, why willpower is the wrong tool, and how dietary reset actually works.',
+    topics: ['Food Dopamine', 'Sugar Science', 'Dietary Reset', 'Brain Chemistry'],
+  }],
+  social_media: [{
+    id: 'screen_limit', title: 'Digital Minimalism — Reclaim Your Attention',
+    channel: 'Cal Newport', duration: '10–15 min',
+    url: 'https://www.youtube.com/results?search_query=cal+newport+digital+minimalism+quit+social+media&sp=EgIYBA%3D%3D',
+    icon: 'fa-mobile-screen-button', color: 'slate', tagline: 'Your attention is a resource. Protect it.',
+    desc: 'Why social media apps are designed to exploit psychological vulnerabilities, why most limit attempts fail, and the 30-day digital detox that actually changes your relationship with screens.',
+    topics: ['Attention Economy', '30-Day Detox', 'Deep Work', 'Screen Habits'],
+  }],
+};
+
 // ─── Motivational messages (must match getRankTitle() titles) ─
 const RANK_MOTIVATIONS = {
   Initiate:     "Every legend starts exactly here. The fact that you're tracking means you're already ahead of 90% of people.",
@@ -374,7 +428,7 @@ export async function initResources(userId, userProfile, authUser = null) {
     renderProgressHero(profile, authUser);
     renderHeatmap(habits14);
     renderMilestones(profile, habits14, anxietyCount);
-    renderLearningSection(habits14, anxietyCount, workoutCount);
+    renderLearningSection(habits14, anxietyCount, workoutCount, profile);
     renderResourceCards(profile, habits14, anxietyCount, workoutCount);
 
   } catch (err) {
@@ -399,7 +453,7 @@ export async function initResources(userId, userProfile, authUser = null) {
 
     // Still render both video sections — they're static and don't need DB data
     const profile = userProfile || {};
-    renderLearningSection([], 0, 0);
+    renderLearningSection([], 0, 0, profile);
     renderResourceCards(profile, [], 0, 0);
   }
 }
@@ -775,20 +829,35 @@ function resourceCard(r, featured = false) {
 }
 
 // ─── Learning protocols ───────────────────────────────────────
-function renderLearningSection(habits14, anxietyCount, workoutCount) {
+function renderLearningSection(habits14, anxietyCount, workoutCount, userProfile = {}) {
   const container = document.getElementById('learning-grid');
   const ctxEl     = document.getElementById('learning-context');
   if (!container) return;
 
-  // Score each protocol by how relevant it is to this user right now
+  const interests = Array.isArray(userProfile.interests) ? userProfile.interests : [];
+  const vices     = Array.isArray(userProfile.vices)     ? userProfile.vices     : [];
+
+  // Score each protocol — base priority + +25 per matched interest
+  const boostedIds = new Set(interests.flatMap((k) => INTEREST_BOOST_MAP[k] || []));
   const scored = LEARNING_LIBRARY.map((v) => ({
     ...v,
-    score: v.priority(anxietyCount, workoutCount),
+    score: v.priority(anxietyCount, workoutCount) + (boostedIds.has(v.id) ? 25 : 0),
   })).sort((a, b) => b.score - a.score);
 
-  // Update context line
+  // Collect vice cards (one per vice, first entry)
+  const viceCards = vices
+    .filter((k) => VICE_LIBRARY[k]?.length)
+    .flatMap((k) => VICE_LIBRARY[k]);
+
+  // Update context line based on interests / vices / activity
   if (ctxEl) {
-    if (anxietyCount >= 3)
+    if (vices.length && interests.length)
+      ctxEl.textContent = `Personalised for your interests (${interests.join(', ')}) and quit-support for ${vices.join(', ')} — ranked by relevance to your current data.`;
+    else if (vices.length)
+      ctxEl.textContent = `Quit-support content prioritised for your listed vices (${vices.join(', ')}) plus clinically-ranked protocols.`;
+    else if (interests.length)
+      ctxEl.textContent = `Ranked by your selected interests (${interests.join(', ')}) and your current habit data.`;
+    else if (anxietyCount >= 3)
       ctxEl.textContent = `Based on your Symptom Vault activity (${anxietyCount} entries), anxiety management protocols have been prioritised for you.`;
     else if (workoutCount < 3)
       ctxEl.textContent = 'Exercise protocols ranked first — consistency in movement directly reduces anxiety sensitivity.';
@@ -796,12 +865,42 @@ function renderLearningSection(habits14, anxietyCount, workoutCount) {
       ctxEl.textContent = 'Clinical techniques and science — ranked by what is most relevant to your current habits and vault data.';
   }
 
-  const top3 = scored.slice(0, 3);
-  const rest  = scored.slice(3);
+  // Vice lifestyle reminder banner
+  const viceReminderHtml = vices.length ? `
+    <div class="bg-rose-500/10 border border-rose-500/30 rounded-2xl p-4 flex items-start gap-3 mb-2">
+      <i class="fa-solid fa-triangle-exclamation text-rose-400 mt-0.5 flex-shrink-0"></i>
+      <div>
+        <p class="text-rose-300 text-sm font-semibold mb-0.5">Lifestyle Change Reminder</p>
+        <p class="text-rose-300/70 text-xs leading-relaxed">
+          You listed <span class="font-medium text-rose-300">${vices.join(', ')}</span> as a vice${vices.length > 1 ? 's' : ''}.
+          The videos below are specifically chosen to help you understand the science and take the first steps to break free.
+          Small, consistent changes compound into transformation.
+        </p>
+      </div>
+    </div>
+  ` : '';
+
+  // Vice cards at top, then scored protocols
+  const top3    = scored.slice(0, 3);
+  const rest    = scored.slice(3);
+  const hasMore = rest.length > 0;
 
   container.innerHTML = `
+    ${viceReminderHtml}
+
+    ${viceCards.length ? `
+      <div class="space-y-4">
+        <p class="text-xs text-slate-500 uppercase tracking-wide font-medium px-1">Quit-Support Content</p>
+        ${viceCards.map((v) => learningCard(v, true)).join('')}
+        <div class="border-t border-slate-700/50 pt-2">
+          <p class="text-xs text-slate-500 uppercase tracking-wide font-medium px-1 pb-3">Learning Protocols</p>
+        </div>
+      </div>
+    ` : ''}
+
     ${top3.map((v, i) => learningCard(v, i === 0)).join('')}
 
+    ${hasMore ? `
     <div>
       <button id="show-more-learning"
         class="w-full text-slate-500 hover:text-slate-300 text-sm py-2 border border-dashed border-slate-700/50
@@ -812,6 +911,7 @@ function renderLearningSection(habits14, anxietyCount, workoutCount) {
         ${rest.map((v) => learningCard(v, false)).join('')}
       </div>
     </div>
+    ` : ''}
   `;
 
   document.getElementById('show-more-learning')?.addEventListener('click', (e) => {

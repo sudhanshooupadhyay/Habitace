@@ -1,7 +1,9 @@
 import { saveAnxietyEntry, addXp } from '../lib/supabase.js';
 import { getRandomGrounding } from '../lib/quotes.js';
 
-export function renderVault() {
+export function renderVault(isAnxietyMode = true) {
+  if (!isAnxietyMode) return renderJournal();
+
   return `
     <div id="vault-section" class="space-y-6 animate-slide-up">
 
@@ -156,7 +158,121 @@ export function renderVault() {
   `;
 }
 
-export async function initVault(userId) {
+// ─── Journaling / Gratitude mode ─────────────────────────────
+function renderJournal() {
+  return `
+    <div id="vault-section" class="space-y-6 animate-slide-up">
+
+      <!-- Header -->
+      <div class="bg-gradient-to-br from-emerald-900/40 to-navy-700 rounded-2xl border border-emerald-500/20 p-6 relative overflow-hidden">
+        <div class="flex items-start gap-4 relative">
+          <div class="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+            <i class="fa-solid fa-pen-to-square text-xl text-emerald-400"></i>
+          </div>
+          <div>
+            <h2 class="text-white text-xl font-bold">Journal & Gratitude</h2>
+            <p class="text-slate-400 text-sm mt-1">
+              Reflect, appreciate, and grow. Every entry earns
+              <span class="text-emerald-400 font-medium">+20 XP</span>.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Entry Form -->
+      <div class="bg-navy-600 rounded-2xl border border-slate-700/50 p-6">
+        <h3 class="text-white font-semibold mb-5 flex items-center gap-2">
+          <i class="fa-solid fa-feather text-emerald-400"></i>
+          Today's Reflection
+        </h3>
+
+        <form id="vault-form" class="space-y-4" novalidate>
+
+          <div>
+            <label class="form-label">3 things I am grateful for today</label>
+            <textarea id="v-trigger" rows="3" required
+              placeholder="1. ... 2. ... 3. ..."
+              class="input-field resize-none"></textarea>
+          </div>
+
+          <div>
+            <label class="form-label">How am I feeling right now?</label>
+            <textarea id="v-symptoms" rows="2"
+              placeholder="Describe your mood, energy, mindset..."
+              class="input-field resize-none"></textarea>
+          </div>
+
+          <div>
+            <label class="form-label">What went well today?</label>
+            <textarea id="v-fear" rows="2"
+              placeholder="Any win, big or small..."
+              class="input-field resize-none"></textarea>
+          </div>
+
+          <div>
+            <label class="form-label">Intention for tomorrow</label>
+            <textarea id="v-reframe" rows="2"
+              placeholder="One thing you will focus on or do differently..."
+              class="input-field resize-none"></textarea>
+          </div>
+
+          <div id="vault-error" class="hidden rounded-xl bg-red-500/10 border border-red-500/30 px-4 py-3 text-red-400 text-sm"></div>
+
+          <button type="submit" id="vault-submit"
+            class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl transition-all
+                   focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-navy-600
+                   disabled:opacity-50 disabled:cursor-not-allowed">
+            <span id="vault-btn-text"><i class="fa-solid fa-leaf mr-2"></i>Save reflection</span>
+            <span id="vault-spinner" class="hidden"><i class="fa-solid fa-circle-notch fa-spin"></i></span>
+          </button>
+        </form>
+      </div>
+
+      <!-- Past entries -->
+      <div class="bg-navy-600 rounded-2xl border border-slate-700/50 p-6">
+        <h3 class="text-white font-semibold mb-4 flex items-center gap-2">
+          <i class="fa-solid fa-clock-rotate-left text-slate-400"></i>
+          Recent Reflections
+        </h3>
+        <div id="vault-entries">
+          <div class="flex items-center justify-center py-8">
+            <i class="fa-solid fa-circle-notch fa-spin text-emerald-400 text-xl"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Success modal (journaling) -->
+    <div id="grounding-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" id="modal-backdrop"></div>
+      <div class="relative bg-navy-600 border border-emerald-500/30 rounded-2xl shadow-2xl max-w-md w-full p-8 animate-slide-up">
+        <div class="text-center mb-4">
+          <div class="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-4">
+            <i class="fa-solid fa-leaf text-2xl text-emerald-400"></i>
+          </div>
+          <p class="text-emerald-400 text-xs uppercase tracking-widest mb-2">Reflection Saved · +20 XP</p>
+          <h3 id="grounding-headline" class="text-white text-xl font-bold"></h3>
+        </div>
+        <p id="grounding-body" class="text-slate-300 text-sm leading-relaxed text-center"></p>
+        <button id="modal-dismiss"
+          class="mt-6 w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl transition-colors">
+          Continue
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+const JOURNAL_AFFIRMATIONS = [
+  { headline: 'Reflection builds resilience.', body: 'Taking time to notice what you\'re grateful for rewires the brain toward optimism. Keep going.' },
+  { headline: 'Growth lives in small moments.', body: 'Every reflection you write is a data point on your journey. The pattern will become clear.' },
+  { headline: 'You showed up for yourself today.', body: 'That matters more than any single result. Consistency over intensity.' },
+  { headline: 'Your story is worth telling.', body: 'Writing gives your experiences meaning. Keep documenting your path.' },
+];
+
+// ─────────────────────────────────────────────────────────────
+
+export async function initVault(userId, isAnxietyMode = true) {
   const form      = document.getElementById('vault-form');
   const errEl     = document.getElementById('vault-error');
   const btnText   = document.getElementById('vault-btn-text');
@@ -204,7 +320,7 @@ export async function initVault(userId) {
       await addXp(userId, 20);
 
       form.reset();
-      showGroundingModal();
+      _showModal(isAnxietyMode);
       loadVaultEntries(userId);
     } catch (err) {
       console.error('[Vault] Save failed:', err);
@@ -218,10 +334,19 @@ export async function initVault(userId) {
   });
 }
 
-function showGroundingModal() {
-  const g = getRandomGrounding();
-  document.getElementById('grounding-headline').textContent = g.headline;
-  document.getElementById('grounding-body').textContent     = g.body;
+function _showModal(isAnxietyMode) {
+  let headline, body;
+  if (isAnxietyMode) {
+    const g = getRandomGrounding();
+    headline = g.headline;
+    body     = g.body;
+  } else {
+    const a  = JOURNAL_AFFIRMATIONS[Math.floor(Math.random() * JOURNAL_AFFIRMATIONS.length)];
+    headline = a.headline;
+    body     = a.body;
+  }
+  document.getElementById('grounding-headline').textContent = headline;
+  document.getElementById('grounding-body').textContent     = body;
   document.getElementById('grounding-modal').classList.remove('hidden');
 }
 

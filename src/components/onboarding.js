@@ -1,10 +1,23 @@
 import { calcBMI, bmiCategory } from '../lib/progressionEngine.js';
 import { supabase } from '../lib/supabase.js';
+import { saveUsername, saveUserInterests } from '../lib/supabase.js';
 
-const TOTAL_STEPS = 3;
+const TOTAL_STEPS = 4;
+
+const INTEREST_OPTIONS = [
+  { key: 'anxiety',    label: 'Anxiety & Health Anxiety', icon: 'fa-brain',        desc: 'CBT, panic, health anxiety techniques' },
+  { key: 'fitness',    label: 'Fitness & Strength',       icon: 'fa-dumbbell',     desc: 'Workout protocols, progressive overload' },
+  { key: 'mindset',    label: 'Mindset & Discipline',     icon: 'fa-fire',         desc: 'Mental toughness, stoicism, motivation' },
+  { key: 'sleep',      label: 'Sleep & Recovery',         icon: 'fa-moon',         desc: 'Sleep science, recovery protocols' },
+  { key: 'journaling', label: 'Journaling & Gratitude',   icon: 'fa-pen-to-square',desc: 'Reflection, gratitude practice' },
+  { key: 'breathing',  label: 'Breathing & Meditation',   icon: 'fa-spa',          desc: 'Breathwork, meditation techniques' },
+];
 
 // ─── State ────────────────────────────────────────────────────
-let state = { height: '', weight: '', bmi: null, step: 1 };
+let state = {
+  height: '', weight: '', bmi: null, step: 1,
+  username: '', hasAnxiety: null, interests: [],
+};
 
 // ─── Render ───────────────────────────────────────────────────
 export function renderOnboarding() {
@@ -33,8 +46,16 @@ export function renderOnboarding() {
   `;
 }
 
+const VICE_OPTIONS = [
+  { key: 'smoking',  label: 'Smoking',   icon: 'fa-smoking' },
+  { key: 'alcohol',  label: 'Alcohol',   icon: 'fa-wine-bottle' },
+  { key: 'gambling', label: 'Gambling',  icon: 'fa-dice' },
+  { key: 'junk_food',label: 'Junk Food', icon: 'fa-burger' },
+  { key: 'social_media', label: 'Social Media', icon: 'fa-mobile-screen' },
+];
+
 export function initOnboarding(userId, onComplete) {
-  state = { height: '', weight: '', bmi: null, step: 1 };
+  state = { height: '', weight: '', bmi: null, step: 1, username: '', hasAnxiety: null, interests: [], vices: [] };
   renderStep(userId, onComplete);
 }
 
@@ -50,87 +71,207 @@ function renderStep(userId, onComplete) {
     case 1: renderStep1(content, userId, onComplete); break;
     case 2: renderStep2(content, userId, onComplete); break;
     case 3: renderStep3(content, userId, onComplete); break;
+    case 4: renderStep4(content, userId, onComplete); break;
   }
 }
 
-// Step 1 — Welcome
+// Step 1 — Welcome + username
 function renderStep1(el, userId, onComplete) {
   el.innerHTML = `
-    <div class="text-center space-y-6">
-      <div class="w-20 h-20 rounded-2xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center mx-auto animate-pulse-glow">
-        <i class="fa-solid fa-brain text-3xl text-indigo-400"></i>
-      </div>
-
-      <!-- Warrior-on-mountain hero illustration -->
-      <svg viewBox="0 0 320 110" xmlns="http://www.w3.org/2000/svg"
-           class="w-full max-w-xs mx-auto" aria-hidden="true">
-        <circle cx="28"  cy="18" r="1.4" fill="#e0e7ff" opacity="0.7"/>
-        <circle cx="80"  cy="8"  r="1"   fill="#c7d2fe" opacity="0.5"/>
-        <circle cx="158" cy="5"  r="1.6" fill="#e0e7ff" opacity="0.8"/>
-        <circle cx="218" cy="12" r="1"   fill="#c7d2fe" opacity="0.5"/>
-        <circle cx="290" cy="6"  r="1.4" fill="#e0e7ff" opacity="0.7"/>
-        <circle cx="55"  cy="32" r="0.9" fill="#c7d2fe" opacity="0.4"/>
-        <circle cx="245" cy="28" r="0.9" fill="#c7d2fe" opacity="0.4"/>
-        <path d="M0,110 L45,72 L85,95 L125,58 L165,80 L205,45 L245,70 L285,38 L320,55 L320,110 Z"
-              fill="#1e293b" opacity="0.6"/>
-        <path d="M0,110 L55,68 L95,88 L145,42 L190,75 L230,35 L270,62 L310,48 L320,52 L320,110 Z"
-              fill="#0f172a" opacity="0.95"/>
-        <path d="M15,110 Q70,85 145,42" stroke="#6366f1" stroke-width="1.2"
-              fill="none" opacity="0.45" stroke-dasharray="4,3"/>
-        <circle cx="145" cy="42" r="12" fill="#6366f1" opacity="0.12"/>
-        <circle cx="145" cy="33" r="4.5" fill="#818cf8" opacity="0.95"/>
-        <line x1="145" y1="37" x2="145" y2="53" stroke="#818cf8" stroke-width="3" stroke-linecap="round" opacity="0.9"/>
-        <line x1="145" y1="43" x2="133" y2="34" stroke="#818cf8" stroke-width="2.2" stroke-linecap="round" opacity="0.9"/>
-        <line x1="145" y1="43" x2="157" y2="34" stroke="#818cf8" stroke-width="2.2" stroke-linecap="round" opacity="0.9"/>
-        <line x1="145" y1="53" x2="139" y2="64" stroke="#818cf8" stroke-width="2" stroke-linecap="round" opacity="0.9"/>
-        <line x1="145" y1="53" x2="151" y2="64" stroke="#818cf8" stroke-width="2" stroke-linecap="round" opacity="0.9"/>
-        <circle cx="145" cy="19" r="3" fill="#a5b4fc" opacity="0.9"/>
-        <line x1="145" y1="13" x2="145" y2="25" stroke="#a5b4fc" stroke-width="0.8" opacity="0.6"/>
-        <line x1="139" y1="19" x2="151" y2="19" stroke="#a5b4fc" stroke-width="0.8" opacity="0.6"/>
-      </svg>
-
-      <div>
+    <div class="space-y-6">
+      <div class="text-center">
+        <div class="w-16 h-16 rounded-2xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center mx-auto mb-4 animate-pulse-glow">
+          <i class="fa-solid fa-brain text-2xl text-indigo-400"></i>
+        </div>
         <p class="text-indigo-400 text-xs uppercase tracking-widest mb-2">First Login</p>
         <h2 class="text-white text-2xl font-bold">Welcome, Warrior.</h2>
-        <p class="text-slate-400 text-sm mt-3 leading-relaxed">
-          Let's establish your baseline. This takes 60 seconds and gives us the data
-          to track your physical progression alongside your mental discipline.
+        <p class="text-slate-400 text-sm mt-2 leading-relaxed">
+          Let's set up your profile — takes about 60 seconds.
         </p>
       </div>
 
-      <div class="grid grid-cols-3 gap-3">
-        ${[
-          ['fa-dumbbell',      'Track',     'habits daily'],
-          ['fa-chart-line',    'Measure',   'real progress'],
-          ['fa-shield-halved', 'Conquer',   'health anxiety'],
-        ].map(([icon, title, sub]) => `
-          <div class="bg-navy-700/50 rounded-xl p-3 text-center">
-            <i class="fa-solid ${icon} text-indigo-400 mb-1 block"></i>
-            <p class="text-white text-xs font-semibold">${title}</p>
-            <p class="text-slate-500 text-xs">${sub}</p>
-          </div>
-        `).join('')}
+      <!-- Username input -->
+      <div>
+        <label class="form-label">Your name / callsign</label>
+        <input id="ob-username" type="text" maxlength="24"
+          placeholder="e.g. Alex, Ghost, Warrior..."
+          value="${state.username}"
+          class="input-field" />
+        <p class="text-slate-600 text-xs mt-1.5">This is how we'll address you throughout the app.</p>
       </div>
+
+      <div id="ob-error-1" class="hidden text-red-400 text-sm text-center"></div>
 
       <button id="ob-next-1"
         class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 rounded-xl transition-colors">
-        Let's begin →
+        Continue →
       </button>
     </div>
   `;
 
   document.getElementById('ob-next-1')?.addEventListener('click', () => {
+    const username = document.getElementById('ob-username')?.value.trim();
+    const errEl    = document.getElementById('ob-error-1');
+    if (!username || username.length < 2) {
+      errEl.textContent = 'Please enter at least 2 characters.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+    state.username = username;
     state.step = 2;
     renderStep(userId, onComplete);
   });
 }
 
-// Step 2 — Biometrics
+// Step 2 — Profile: anxiety, interests, vices
 function renderStep2(el, userId, onComplete) {
   el.innerHTML = `
     <div class="space-y-6">
       <div>
-        <p class="text-slate-400 text-xs uppercase tracking-widest mb-1">Step 2 of 3</p>
+        <p class="text-slate-400 text-xs uppercase tracking-widest mb-1">Step 2 of 4</p>
+        <h2 class="text-white text-xl font-bold">Your Profile</h2>
+        <p class="text-slate-400 text-sm mt-1">Help us personalise your experience.</p>
+      </div>
+
+      <!-- Anxiety question -->
+      <div>
+        <p class="text-white text-sm font-medium mb-3">
+          <i class="fa-solid fa-brain text-indigo-400 mr-2"></i>Do you experience anxiety or health anxiety?
+        </p>
+        <div class="flex gap-3">
+          <button id="ob-anxiety-yes"
+            class="ob-anxiety-btn flex-1 py-2.5 rounded-xl text-sm font-medium border transition-colors
+                   ${state.hasAnxiety === true ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-700/60 border-slate-600 text-slate-400 hover:border-indigo-500/50'}">
+            <i class="fa-solid fa-check mr-1.5"></i>Yes
+          </button>
+          <button id="ob-anxiety-no"
+            class="ob-anxiety-btn flex-1 py-2.5 rounded-xl text-sm font-medium border transition-colors
+                   ${state.hasAnxiety === false ? 'bg-slate-600 border-slate-500 text-white' : 'bg-slate-700/60 border-slate-600 text-slate-400 hover:border-slate-500'}">
+            <i class="fa-solid fa-xmark mr-1.5"></i>No
+          </button>
+        </div>
+        <p id="ob-anxiety-hint" class="text-slate-600 text-xs mt-1.5">
+          ${state.hasAnxiety === false ? 'Your Vault will be a journaling & gratitude space instead.' : 'Your Vault will be an anxiety tracking & evidence log.'}
+        </p>
+      </div>
+
+      <!-- Interests -->
+      <div>
+        <p class="text-white text-sm font-medium mb-3">
+          <i class="fa-solid fa-book text-amber-400 mr-2"></i>What would you like to learn about?
+          <span class="text-slate-500 font-normal">(pick all that apply)</span>
+        </p>
+        <div class="grid grid-cols-2 gap-2">
+          ${INTEREST_OPTIONS.map((opt) => `
+            <button class="ob-interest-btn text-left px-3 py-2.5 rounded-xl text-sm border transition-colors
+                           ${state.interests.includes(opt.key) ? 'bg-indigo-600/20 border-indigo-500/50 text-indigo-300' : 'bg-slate-700/40 border-slate-600/50 text-slate-400 hover:border-slate-500'}
+                           flex items-start gap-2"
+              data-key="${opt.key}">
+              <i class="fa-solid ${opt.icon} mt-0.5 flex-shrink-0 text-xs"></i>
+              <div>
+                <p class="font-medium text-xs leading-tight">${opt.label}</p>
+                <p class="text-xs text-slate-500 leading-snug mt-0.5">${opt.desc}</p>
+              </div>
+            </button>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- Vices -->
+      <div>
+        <p class="text-white text-sm font-medium mb-1">
+          <i class="fa-solid fa-triangle-exclamation text-amber-400 mr-2"></i>Any habits you want to break?
+          <span class="text-slate-500 font-normal">(optional)</span>
+        </p>
+        <p class="text-slate-500 text-xs mb-3">We'll add these as habit reminders and suggest content to help you quit.</p>
+        <div class="flex flex-wrap gap-2">
+          ${VICE_OPTIONS.map((v) => `
+            <button class="ob-vice-btn px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors
+                           ${state.vices.includes(v.key) ? 'bg-red-500/20 border-red-500/40 text-red-300' : 'bg-slate-700/40 border-slate-600/50 text-slate-400 hover:border-slate-500'}
+                           flex items-center gap-1.5"
+              data-key="${v.key}">
+              <i class="fa-solid ${v.icon} text-xs"></i>${v.label}
+            </button>
+          `).join('')}
+        </div>
+      </div>
+
+      <div class="flex gap-3">
+        <button id="ob-back-2"
+          class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-medium py-3 rounded-xl transition-colors">
+          ← Back
+        </button>
+        <button id="ob-next-2"
+          class="flex-grow bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 rounded-xl transition-colors">
+          Continue →
+        </button>
+      </div>
+    </div>
+  `;
+
+  // Anxiety toggle
+  document.getElementById('ob-anxiety-yes')?.addEventListener('click', () => {
+    state.hasAnxiety = true;
+    document.getElementById('ob-anxiety-yes').className = document.getElementById('ob-anxiety-yes').className
+      .replace(/bg-slate-700\/60|border-slate-600|text-slate-400/g, '') + ' bg-indigo-600 border-indigo-500 text-white';
+    document.getElementById('ob-anxiety-no').className = 'ob-anxiety-btn flex-1 py-2.5 rounded-xl text-sm font-medium border transition-colors bg-slate-700/60 border-slate-600 text-slate-400 hover:border-slate-500';
+    const hint = document.getElementById('ob-anxiety-hint');
+    if (hint) hint.textContent = 'Your Vault will be an anxiety tracking & evidence log.';
+  });
+
+  document.getElementById('ob-anxiety-no')?.addEventListener('click', () => {
+    state.hasAnxiety = false;
+    document.getElementById('ob-anxiety-no').className = document.getElementById('ob-anxiety-no').className
+      .replace(/bg-slate-700\/60|border-slate-600|text-slate-400/g, '') + ' bg-slate-600 border-slate-500 text-white';
+    document.getElementById('ob-anxiety-yes').className = 'ob-anxiety-btn flex-1 py-2.5 rounded-xl text-sm font-medium border transition-colors bg-slate-700/60 border-slate-600 text-slate-400 hover:border-indigo-500/50';
+    const hint = document.getElementById('ob-anxiety-hint');
+    if (hint) hint.textContent = 'Your Vault will be a journaling & gratitude space instead.';
+  });
+
+  // Interest toggles
+  el.querySelectorAll('.ob-interest-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.key;
+      const idx = state.interests.indexOf(key);
+      if (idx >= 0) {
+        state.interests.splice(idx, 1);
+        btn.className = btn.className
+          .replace('bg-indigo-600/20 border-indigo-500/50 text-indigo-300', 'bg-slate-700/40 border-slate-600/50 text-slate-400');
+      } else {
+        state.interests.push(key);
+        btn.className = btn.className
+          .replace('bg-slate-700/40 border-slate-600/50 text-slate-400', 'bg-indigo-600/20 border-indigo-500/50 text-indigo-300');
+      }
+    });
+  });
+
+  // Vice toggles
+  el.querySelectorAll('.ob-vice-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.key;
+      const idx = state.vices.indexOf(key);
+      if (idx >= 0) {
+        state.vices.splice(idx, 1);
+        btn.className = btn.className
+          .replace('bg-red-500/20 border-red-500/40 text-red-300', 'bg-slate-700/40 border-slate-600/50 text-slate-400');
+      } else {
+        state.vices.push(key);
+        btn.className = btn.className
+          .replace('bg-slate-700/40 border-slate-600/50 text-slate-400', 'bg-red-500/20 border-red-500/40 text-red-300');
+      }
+    });
+  });
+
+  document.getElementById('ob-back-2')?.addEventListener('click', () => { state.step = 1; renderStep(userId, onComplete); });
+  document.getElementById('ob-next-2')?.addEventListener('click', () => { state.step = 3; renderStep(userId, onComplete); });
+}
+
+// Step 3 — Biometrics
+function renderStep3(el, userId, onComplete) {
+  el.innerHTML = `
+    <div class="space-y-6">
+      <div>
+        <p class="text-slate-400 text-xs uppercase tracking-widest mb-1">Step 3 of 4</p>
         <h2 class="text-white text-xl font-bold">Baseline Biometrics</h2>
         <p class="text-slate-400 text-sm mt-2">
           Used only to calculate BMI and track physical progress over time.
@@ -167,11 +308,11 @@ function renderStep2(el, userId, onComplete) {
       <div id="ob-error" class="hidden text-red-400 text-sm text-center"></div>
 
       <div class="flex gap-3">
-        <button id="ob-back-2"
+        <button id="ob-back-3"
           class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-medium py-3 rounded-xl transition-colors">
           ← Back
         </button>
-        <button id="ob-next-2"
+        <button id="ob-next-3"
           class="flex-2 flex-grow bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 rounded-xl transition-colors">
           Calculate BMI →
         </button>
@@ -206,12 +347,12 @@ function renderStep2(el, userId, onComplete) {
   weightEl?.addEventListener('input', updatePreview);
   if (state.height && state.weight) updatePreview();
 
-  document.getElementById('ob-back-2')?.addEventListener('click', () => {
-    state.step = 1;
+  document.getElementById('ob-back-3')?.addEventListener('click', () => {
+    state.step = 2;
     renderStep(userId, onComplete);
   });
 
-  document.getElementById('ob-next-2')?.addEventListener('click', () => {
+  document.getElementById('ob-next-3')?.addEventListener('click', () => {
     const h = parseFloat(heightEl.value);
     const w = parseFloat(weightEl.value);
     const errEl = document.getElementById('ob-error');
@@ -231,13 +372,13 @@ function renderStep2(el, userId, onComplete) {
     state.height = h;
     state.weight = w;
     state.bmi    = calcBMI(w, h);
-    state.step   = 3;
+    state.step   = 4;
     renderStep(userId, onComplete);
   });
 }
 
-// Step 3 — BMI result + save
-function renderStep3(el, userId, onComplete) {
+// Step 4 — BMI result + save
+function renderStep4(el, userId, onComplete) {
   const cat    = bmiCategory(state.bmi);
   const target = { min: 18.5, max: 24.9 };
   const diff   = state.bmi < target.min
@@ -260,7 +401,7 @@ function renderStep3(el, userId, onComplete) {
   el.innerHTML = `
     <div class="space-y-6">
       <div>
-        <p class="text-slate-400 text-xs uppercase tracking-widest mb-1">Step 3 of 3 — Your Baseline</p>
+        <p class="text-slate-400 text-xs uppercase tracking-widest mb-1">Step 4 of 4 — Your Baseline</p>
         <h2 class="text-white text-xl font-bold">Analytical Profile</h2>
         <p class="text-slate-400 text-sm mt-1">Purely data. No judgement. Only trajectory.</p>
       </div>
@@ -346,7 +487,7 @@ function renderStep3(el, userId, onComplete) {
       <div id="ob-save-error" class="hidden text-red-400 text-sm text-center"></div>
 
       <div class="flex gap-3">
-        <button id="ob-back-3"
+        <button id="ob-back-4"
           class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-medium py-3 rounded-xl transition-colors">
           ← Back
         </button>
@@ -360,8 +501,8 @@ function renderStep3(el, userId, onComplete) {
     </div>
   `;
 
-  document.getElementById('ob-back-3')?.addEventListener('click', () => {
-    state.step = 2;
+  document.getElementById('ob-back-4')?.addEventListener('click', () => {
+    state.step = 3;
     renderStep(userId, onComplete);
   });
 
@@ -384,6 +525,18 @@ function renderStep3(el, userId, onComplete) {
         p_bmi:       state.bmi,
       });
       if (rpcErr) throw rpcErr;
+
+      // Save profile preferences (username, interests, vices, anxiety flag)
+      const { error: profileErr } = await supabase
+        .from('users')
+        .update({
+          username:    state.username  || null,
+          interests:   state.interests.length ? state.interests : null,
+          vices:       state.vices.length     ? state.vices     : null,
+          has_anxiety: state.hasAnxiety       ?? null,
+        })
+        .eq('id', userId);
+      if (profileErr) console.warn('[Onboarding] Profile save warning:', profileErr);
 
       // Also write initial weight_log row
       const today = new Date().toISOString().split('T')[0];
