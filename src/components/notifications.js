@@ -65,24 +65,37 @@ export function renderNotificationBanner(userId) {
 
   return `
     <div id="notif-banner"
-      class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4 animate-slide-up">
-      <div class="bg-navy-500 border border-indigo-500/40 rounded-2xl shadow-2xl p-4 flex items-center gap-4">
-        <div class="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center flex-shrink-0">
-          <i class="fa-solid fa-bell text-indigo-400"></i>
+      class="fixed left-1/2 -translate-x-1/2 z-50 w-full max-w-lg px-3 animate-slide-up"
+      style="bottom: calc(72px + env(safe-area-inset-bottom, 0px))">
+      <div class="bg-slate-800 border border-indigo-500/40 rounded-2xl shadow-2xl p-4">
+
+        <!-- Top row: icon + text -->
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-9 h-9 rounded-xl bg-indigo-500/20 flex items-center justify-center flex-shrink-0">
+            <i class="fa-solid fa-bell text-indigo-400 text-sm"></i>
+          </div>
+          <div class="min-w-0">
+            <p class="text-white text-sm font-semibold leading-snug">Stay on track with daily reminders</p>
+            <p class="text-slate-400 text-xs mt-0.5">2 PM check-in &amp; 9 PM reflection — 30 seconds each</p>
+          </div>
         </div>
-        <div class="flex-1 min-w-0">
-          <p class="text-white text-sm font-medium">Enable daily reminders</p>
-          <p class="text-slate-400 text-xs mt-0.5">2 PM &amp; 9 PM check-in nudges</p>
-        </div>
-        <div class="flex gap-2 flex-shrink-0">
-          <button id="notif-dismiss" class="text-slate-500 hover:text-white text-xs transition-colors px-2 py-1">
-            Later
+
+        <!-- Button row: full width, always reachable -->
+        <div class="flex gap-2">
+          <button id="notif-dismiss"
+            class="flex-1 text-slate-400 hover:text-white text-sm font-medium
+                   bg-slate-700/60 hover:bg-slate-700 rounded-xl py-2.5 transition-colors">
+            Not now
           </button>
           <button id="notif-enable"
-            class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
-            Enable
+            class="flex-[2] bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700
+                   text-white text-sm font-semibold rounded-xl py-2.5 transition-colors
+                   flex items-center justify-center gap-2">
+            <i class="fa-solid fa-bell text-xs"></i>
+            Enable Notifications
           </button>
         </div>
+
       </div>
     </div>
   `;
@@ -103,8 +116,8 @@ export function initNotificationBanner(userId) {
     const ok = await requestPushPermission(userId);
     if (ok) {
       banner.innerHTML = `
-        <div class="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-4 text-center text-emerald-400 text-sm">
-          <i class="fa-solid fa-check-circle mr-2"></i>Reminders enabled!
+        <div class="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-4 text-center text-emerald-400 text-sm font-medium">
+          <i class="fa-solid fa-circle-check mr-2"></i>Reminders enabled — you're set.
         </div>`;
       setTimeout(() => banner.remove(), 2500);
     } else {

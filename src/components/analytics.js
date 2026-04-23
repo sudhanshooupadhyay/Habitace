@@ -61,10 +61,12 @@ export function renderAnalytics() {
       <!-- Summary Cards -->
       <div class="grid grid-cols-2 gap-4" id="summary-cards">
         <div class="bg-navy-600 rounded-2xl border border-slate-700/50 p-5 text-center">
-          <i class="fa-solid fa-circle-notch fa-spin text-sky-400 text-xl"></i>
+          <p class="text-2xl font-bold text-slate-500">—</p>
+          <p class="text-slate-600 text-xs mt-1">Loading…</p>
         </div>
         <div class="bg-navy-600 rounded-2xl border border-slate-700/50 p-5 text-center">
-          <i class="fa-solid fa-circle-notch fa-spin text-sky-400 text-xl"></i>
+          <p class="text-2xl font-bold text-slate-500">—</p>
+          <p class="text-slate-600 text-xs mt-1">Loading…</p>
         </div>
       </div>
 
@@ -119,9 +121,7 @@ export function renderAnalytics() {
           <span class="text-xs text-slate-500 font-normal ml-1">— last 30 days</span>
         </h3>
         <div id="habit-grid" class="space-y-3">
-          <div class="flex items-center justify-center py-4">
-            <i class="fa-solid fa-circle-notch fa-spin text-amber-400"></i>
-          </div>
+          <p class="text-slate-600 text-sm text-center py-3">Loading habit data…</p>
         </div>
       </div>
 
@@ -152,8 +152,19 @@ async function loadChartData(userId, days) {
     renderHabitGrid(habits);
   } catch (err) {
     console.error('[Analytics] Load failed:', err);
-    document.getElementById('chart-loading').innerHTML =
-      '<p class="text-red-400 text-sm">Failed to load analytics.</p>';
+
+    const loading = document.getElementById('chart-loading');
+    if (loading) loading.innerHTML = '<p class="text-red-400 text-sm text-center">Could not load data.</p>';
+
+    const cards = document.getElementById('summary-cards');
+    if (cards) cards.innerHTML = `
+      <div class="col-span-2 text-center py-6 text-slate-500 text-sm">
+        <i class="fa-solid fa-circle-exclamation text-red-400 mr-2"></i>
+        Failed to load analytics. Check your connection.
+      </div>`;
+
+    const grid = document.getElementById('habit-grid');
+    if (grid) grid.innerHTML = '<p class="text-slate-600 text-sm text-center py-4">No data available.</p>';
   }
 }
 
@@ -203,8 +214,9 @@ function renderChart(habits, anxiety, days) {
   const ctx     = document.getElementById('main-chart');
   const loading = document.getElementById('chart-loading');
 
-  if (!ctx) return;
+  // Always hide the overlay — even if canvas isn't found
   if (loading) loading.style.display = 'none';
+  if (!ctx) return;
 
   // Build date labels for range
   const labels = [];
@@ -304,6 +316,15 @@ function renderChart(habits, anxiety, days) {
 function renderHabitGrid(habits) {
   const grid = document.getElementById('habit-grid');
   if (!grid) return;
+
+  if (!habits || habits.length === 0) {
+    grid.innerHTML = `
+      <div class="text-center py-6">
+        <i class="fa-solid fa-seedling text-amber-400/40 text-2xl mb-3"></i>
+        <p class="text-slate-500 text-sm">No habit data yet — start ticking off your Daily Five and your grid will fill in here.</p>
+      </div>`;
+    return;
+  }
 
   const HABIT_KEYS = [
     { key: 'studying',     label: 'Study',   color: '#6366f1' },

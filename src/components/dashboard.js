@@ -88,6 +88,10 @@ export function renderDashboard(userData, authUser = null) {
   const greeting   = getGreeting();
   const firstName  = _extractFirstName(authUser);
 
+  // Day-N counter — Day 1 = the day the account was created
+  const joinDate  = userData?.created_at ? new Date(userData.created_at) : new Date();
+  const dayNumber = Math.max(1, Math.floor((Date.now() - joinDate.getTime()) / 86_400_000) + 1);
+
   return `
     <div id="dashboard-section" class="space-y-5 animate-slide-up">
 
@@ -240,8 +244,11 @@ export function renderDashboard(userData, authUser = null) {
             <i class="fa-solid fa-sun text-indigo-400"></i>
           </div>
           <div class="flex-1 min-w-0">
-            <p class="text-slate-500 text-xs uppercase tracking-widest mb-1">${formatDate()}</p>
-            <h2 class="text-white text-lg font-bold">${getGreeting()}, Warrior.</h2>
+            <div class="flex items-center gap-2 flex-wrap mb-1">
+              <p class="text-slate-500 text-xs uppercase tracking-widest">${formatDate()}</p>
+              <span class="bg-indigo-500/20 text-indigo-400 text-xs px-2 py-0.5 rounded-full font-semibold">Day ${dayNumber}</span>
+            </div>
+            <h2 class="text-white text-lg font-bold">${getGreeting()}, ${firstName}.</h2>
             <blockquote class="text-slate-300 text-sm italic border-l-2 border-indigo-500/40 pl-3 mt-2">
               "${quote.text}"
               <footer class="text-slate-500 text-xs mt-1 not-italic">— ${quote.author}</footer>

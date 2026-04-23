@@ -11,137 +11,256 @@
 import { supabase } from '../lib/supabase.js';
 import { calcLevel, getRankTitle } from '../lib/progressionEngine.js';
 
-// ─── YouTube resource library ─────────────────────────────────
+// ─── Short motivational video library (~5–15 min each) ────────
 const LIBRARY = [
   {
-    id:       'huberman',
-    channel:  'Huberman Lab',
-    handle:   '@hubermanlab',
-    url:      'https://www.youtube.com/@hubermanlab',
-    icon:     'fa-brain',
-    color:    'indigo',
-    tagline:  'Neuroscience tools for everyday life',
-    desc:     'Andrew Huberman (Stanford) breaks down the science of stress, anxiety, sleep, focus, and physical performance with actionable protocols you can use immediately.',
-    topics:   ['Stress & Anxiety Management', 'Sleep Optimisation', 'Focus & Dopamine', 'Breathing Protocols'],
-    triggers: { anxiety: 3, sleep: 2, stress: 3, performance: 2 },
+    id:       'goggins_discipline',
+    title:    'David Goggins — Discipline Is The Answer',
+    channel:  'David Goggins',
+    duration: '8–12 min',
+    url:      'https://www.youtube.com/results?search_query=david+goggins+discipline+motivation&sp=EgIYBA%3D%3D',
+    icon:     'fa-fire-flame-curved',
+    color:    'red',
+    tagline:  'The hardest man alive. No excuses.',
+    desc:     'Goggins built himself from nothing using callus-your-mind discipline. Every clip cuts through mental weakness and shows you what the human body and mind are actually capable of.',
+    topics:   ['Discipline', 'No Excuses', 'Mental Calluses', 'Breaking Limits'],
+    triggers: { motivation: 3, consistency_low: 3, workout_low: 2 },
+    baseScore: 85,
+  },
+  {
+    id:       'jocko_discipline',
+    title:    'Jocko Willink — Discipline Equals Freedom',
+    channel:  'Jocko Willink',
+    duration: '5–10 min',
+    url:      'https://www.youtube.com/results?search_query=jocko+willink+discipline+equals+freedom+short&sp=EgIYBA%3D%3D',
+    icon:     'fa-crosshairs',
+    color:    'slate',
+    tagline:  'Navy SEAL commander on ownership & control.',
+    desc:     "Jocko's core thesis: discipline is the path to freedom, not its enemy. Former SEAL commander, no nonsense. Every clip is a direct injection of accountability and hard ownership.",
+    topics:   ['Ownership', 'Military Discipline', 'No Excuses', 'Leadership'],
+    triggers: { consistency_low: 3, motivation: 2, workout_low: 2 },
+    baseScore: 80,
+  },
+  {
+    id:       'eric_thomas',
+    title:    'Eric Thomas — How Bad Do You Want It',
+    channel:  'Eric Thomas',
+    duration: '5–10 min',
+    url:      'https://www.youtube.com/results?search_query=eric+thomas+how+bad+do+you+want+success&sp=EgIYBA%3D%3D',
+    icon:     'fa-bullseye',
+    color:    'orange',
+    tagline:  'When you want it as bad as you want to breathe.',
+    desc:     "ET the Hip-Hop Preacher turned sleeping under a bridge into a PhD. His energy is unmatched. Best for the moments when you want to quit — 8 minutes of this will reset your entire mindset.",
+    topics:   ['Hunger', 'Sacrifice', 'Commitment', 'No Quit'],
+    triggers: { motivation: 5, consistency_low: 4 },
+    baseScore: 80,
+  },
+  {
+    id:       'mcraven_bed',
+    title:    'Admiral McRaven — Make Your Bed',
+    channel:  'UT Austin',
+    duration: '~10 min',
+    url:      'https://www.youtube.com/results?search_query=admiral+mcraven+make+your+bed+short&sp=EgIYBA%3D%3D',
+    icon:     'fa-star',
+    color:    'sky',
+    tagline:  '10 lessons from SEAL training that change everything.',
+    desc:     "Commander of the Navy SEALs delivers one of the most shared speeches in history. Starts with making your bed — a small win that sets the tone for the entire day. Pure discipline in 10 minutes.",
+    topics:   ['Small Wins First', 'Never Quit', 'Team Matters', 'Change The World'],
+    triggers: { motivation: 3, consistency_low: 2, beginner: 3 },
+    baseScore: 75,
+  },
+  {
+    id:       'denzel_fall',
+    title:    'Denzel Washington — Fall Forward',
+    channel:  'Denzel Washington',
+    duration: '~12 min',
+    url:      'https://www.youtube.com/results?search_query=denzel+washington+fall+forward+motivation&sp=EgIYBA%3D%3D',
+    icon:     'fa-person-falling-burst',
+    color:    'amber',
+    tagline:  'Fall forward, not backward.',
+    desc:     "Denzel doesn't talk about talent — he talks about failure, showing up, and what happens when you fall in the right direction. One of the most grounded pieces of advice ever put on a stage.",
+    topics:   ['Failure = Progress', 'Work Ethic', 'Purpose', 'Faith'],
+    triggers: { motivation: 3, consistency_low: 2 },
     baseScore: 70,
   },
   {
-    id:       'therapynutshell',
-    channel:  'Therapy in a Nutshell',
-    handle:   '@TherapyinaNutshell',
-    url:      'https://www.youtube.com/@TherapyinaNutshell',
-    icon:     'fa-heart',
-    color:    'rose',
-    tagline:  'CBT & anxiety skills — practical & clinical',
-    desc:     'Emma McAdam (licensed therapist) teaches Cognitive Behavioural Therapy tools used in real clinical practice — specific episodes target health anxiety, panic, and catastrophic thinking.',
-    topics:   ['Health Anxiety (specific)', 'CBT Techniques', 'Panic & Catastrophising', 'Emotional Regulation'],
-    triggers: { anxiety: 5, health_anxiety: 5 },
-    baseScore: 50,
+    id:       'jordan_peterson',
+    title:    'Jordan Peterson — Sort Yourself Out',
+    channel:  'Jordan B Peterson',
+    duration: '5–15 min',
+    url:      'https://www.youtube.com/results?search_query=jordan+peterson+sort+yourself+out+motivation+short&sp=EgIYBA%3D%3D',
+    icon:     'fa-brain',
+    color:    'indigo',
+    tagline:  'Clean your room. Fix your life.',
+    desc:     "Peterson on responsibility, order from chaos, and why you fix the small things around you first. Directly applicable when anxiety or overwhelm is making the big picture impossible to face.",
+    topics:   ['Order vs Chaos', 'Responsibility', 'Self-Mastery', 'Small Steps'],
+    triggers: { anxiety: 3, motivation: 2, consistency_low: 2 },
+    baseScore: 70,
   },
   {
-    id:       'healthygamergg',
-    channel:  'HealthyGamerGG',
-    handle:   '@HealthyGamerGG',
-    url:      'https://www.youtube.com/@HealthyGamerGG',
-    icon:     'fa-shield-halved',
+    id:       'kobe_mamba',
+    title:    'Kobe Bryant — Mamba Mentality',
+    channel:  'Kobe Bryant',
+    duration: '5–10 min',
+    url:      'https://www.youtube.com/results?search_query=kobe+bryant+mamba+mentality+short+motivation&sp=EgIYBA%3D%3D',
+    icon:     'fa-basketball',
+    color:    'purple',
+    tagline:  '4AM. Every day. No days off.',
+    desc:     "Kobe's relentless work ethic is legendary not for talent, but for obsessive consistency. Every clip shows what happens when you out-prepare everyone else while they sleep.",
+    topics:   ['Obsessive Preparation', 'No Days Off', 'Competitive Edge', '4AM Mentality'],
+    triggers: { workout_low: 3, consistency_low: 3, performance: 3 },
+    baseScore: 75,
+  },
+  {
+    id:       'huberman_anxiety',
+    title:    'Huberman Lab — Stop Anxiety Now (Breathing Tool)',
+    channel:  'Huberman Lab',
+    duration: '5–15 min',
+    url:      'https://www.youtube.com/results?search_query=huberman+lab+anxiety+breathing+tool+short&sp=EgIYBA%3D%3D',
+    icon:     'fa-lungs',
     color:    'teal',
-    tagline:  'Dr. K — Harvard psychiatrist, no fluff',
-    desc:     "Dr. Alok Kanojia (Harvard psychiatrist) addresses anxiety, burnout, and mental health through a lens that's direct, evidence-based, and actually relatable. Particularly strong on breaking anxiety loops.",
-    topics:   ['Breaking Anxiety Cycles', 'Mental Clarity', 'Burnout Recovery', 'Building Discipline'],
-    triggers: { anxiety: 4, consistency_low: 3, motivation: 3 },
-    baseScore: 55,
+    tagline:  'Neuroscience protocol — works within minutes.',
+    desc:     "Huberman's short clips deliver actionable science to manage anxiety in real time — the physiological sigh, double nasal inhale, and other tools proven to calm your nervous system within 60 seconds.",
+    topics:   ['Physiological Sigh', 'Breathing Tools', 'Nervous System', 'Immediate Calm'],
+    triggers: { anxiety: 5, stress: 4, health_anxiety: 4 },
+    baseScore: 75,
   },
   {
-    id:       'jeffnippard',
-    channel:  'Jeff Nippard',
-    handle:   '@JeffNippard',
-    url:      'https://www.youtube.com/@JeffNippard',
-    icon:     'fa-dumbbell',
-    color:    'emerald',
-    tagline:  'Science-based training — zero broscience',
-    desc:     'Kinesiology graduate. Every video is peer-reviewed and referenced. Ideal if you want to optimise your workout program rather than just survive it — technique, volume, and progressive overload done right.',
-    topics:   ['Full-Body Programming', 'Progressive Overload Science', 'Injury-Free Training', 'Body Recomposition'],
-    triggers: { workout_low: 2, fitness: 3, performance: 2 },
-    baseScore: 60,
-  },
-  {
-    id:       'athleanx',
-    channel:  'AthleanX',
-    handle:   '@athleanx',
-    url:      'https://www.youtube.com/@athleanx',
-    icon:     'fa-person-running',
-    color:    'sky',
-    tagline:  'Athletic performance, injury prevention',
-    desc:     "Jeff Cavaliere (physical therapist + strength coach) focuses on training like an athlete — strong emphasis on injury prevention, joint health, and building functional strength that actually carries over to real life.",
-    topics:   ['Injury Prevention', 'Home & Gym Workouts', 'Posture & Mobility', 'Athletic Conditioning'],
-    triggers: { workout_low: 3, fitness: 3, beginner: 2 },
-    baseScore: 55,
-  },
-  {
-    id:       'rp',
-    channel:  'Renaissance Periodization',
-    handle:   '@RenaissancePeriodization',
-    url:      'https://www.youtube.com/@RenaissancePeriodization',
-    icon:     'fa-chart-line',
-    color:    'violet',
-    tagline:  'PhD-level lifting science made practical',
-    desc:     'Dr. Mike Israetel and team apply sport science to bodybuilding — hypertrophy research, diet phases, recovery science. Best for intermediate to advanced lifters who want to stop guessing and start optimising.',
-    topics:   ['Hypertrophy Science', 'Diet & Cutting', 'Training Volume', 'Periodisation'],
-    triggers: { fitness: 2, advanced: 3, performance: 3 },
-    baseScore: 45,
-  },
-  {
-    id:       'thomas',
-    channel:  'Thomas DeLauer',
-    handle:   '@ThomasDeLauerOfficial',
-    url:      'https://www.youtube.com/@ThomasDeLauerOfficial',
-    icon:     'fa-apple-whole',
-    color:    'amber',
-    tagline:  'Nutrition, fasting & metabolic health',
-    desc:     'Deep dives into nutrition science — intermittent fasting, metabolic flexibility, body composition, and how food choices directly affect cognition, energy, and inflammation. Highly relevant if BMI is a focus.',
-    topics:   ['Intermittent Fasting', 'Fat Loss Science', 'Anti-Inflammation Diet', 'Metabolic Health'],
-    triggers: { bmi_high: 4, nutrition: 3, fitness: 1 },
-    baseScore: 50,
-  },
-  {
-    id:       'wimhof',
+    id:       'wimhof_breathing',
+    title:    'Wim Hof — Breathing Technique (Guided)',
     channel:  'Wim Hof',
-    handle:   '@wimhof1',
-    url:      'https://www.youtube.com/@wimhof1',
+    duration: '~10 min',
+    url:      'https://www.youtube.com/results?search_query=wim+hof+breathing+technique+guided+tutorial&sp=EgIYBA%3D%3D',
     icon:     'fa-wind',
     color:    'cyan',
-    tagline:  'Breathing & cold exposure — immediate calm',
-    desc:     'Wim Hof Method combines specific breathing exercises with cold exposure to lower stress hormones, boost immune function, and create a measurable shift in mood and energy within minutes.',
-    topics:   ['Wim Hof Breathing', 'Cold Exposure Protocol', 'Stress Hormones', 'Immune Resilience'],
-    triggers: { anxiety: 2, stress: 3, meditation: 2 },
-    baseScore: 55,
+    tagline:  'Control your breath. Control your mind.',
+    desc:     "The Iceman walks you through his breathing method in one short session. Proven to lower cortisol, reduce anxiety, and shift your mood within a single practice. Do this once and you'll feel it.",
+    topics:   ['Breathwork', 'Cortisol Control', 'Stress Response', 'Immediate Effect'],
+    triggers: { anxiety: 4, stress: 3, meditation: 3 },
+    baseScore: 70,
   },
   {
-    id:       'peterattia',
-    channel:  'Peter Attia MD',
-    handle:   '@PeterAttiaMD',
-    url:      'https://www.youtube.com/@PeterAttiaMD',
-    icon:     'fa-stethoscope',
-    color:    'slate',
-    tagline:  'Longevity science & health optimisation',
-    desc:     "Dr. Peter Attia translates longevity research into practical protocols — Zone 2 cardio, VO₂ Max, cancer screening, sleep, strength training for a longer healthspan. Best for those who want to understand the 'why' behind everything.",
-    topics:   ['Zone 2 Cardio', 'VO₂ Max & Longevity', 'Sleep Architecture', 'Strength for Longevity'],
-    triggers: { advanced: 2, performance: 3, sleep: 2 },
-    baseScore: 45,
+    id:       'ct_fletcher',
+    title:    'CT Fletcher — Command Your Body',
+    channel:  'CT Fletcher',
+    duration: '5–10 min',
+    url:      'https://www.youtube.com/results?search_query=ct+fletcher+motivation+short+gym&sp=EgIYBA%3D%3D',
+    icon:     'fa-dumbbell',
+    color:    'emerald',
+    tagline:  '7x world champion. Iron discipline. Zero mercy.',
+    desc:     "CT Fletcher — 7x world strictcurl champion and powerlifting legend. Raw, unfiltered energy about commanding your body to do what your mind tells it. The definition of iron will in short clips.",
+    topics:   ['Iron Will', 'Command Your Body', 'Gym Mentality', 'Mental Strength'],
+    triggers: { workout_low: 4, fitness: 3, motivation: 3 },
+    baseScore: 65,
+  },
+];
+
+// ─── Learning protocol video library ─────────────────────────
+// Personalized by anxietyCount and workoutCount via priority()
+const LEARNING_LIBRARY = [
+  {
+    id:       'cbt_health_anxiety',
+    title:    'CBT for Health Anxiety — Step by Step',
+    channel:  'Therapy in a Nutshell',
+    duration: '10–15 min',
+    url:      'https://www.youtube.com/results?search_query=therapy+in+a+nutshell+health+anxiety+CBT+techniques&sp=EgIYBA%3D%3D',
+    icon:     'fa-heart-pulse',
+    color:    'rose',
+    tagline:  'Emma McAdam — licensed therapist, clinical CBT.',
+    desc:     'Step-by-step CBT protocol for health anxiety: how catastrophic health thoughts form, why reassurance-seeking makes anxiety worse, and the exact cognitive restructuring steps to interrupt the cycle permanently.',
+    topics:   ['Health Anxiety', 'CBT Protocol', 'Reassurance Traps', 'Thought Restructuring'],
+    priority: (a) => a >= 1 ? 100 : 60,
   },
   {
-    id:       'kati',
+    id:       'panic_clinical',
+    title:    'Stop a Panic Attack — Clinical Protocol',
+    channel:  'Therapy in a Nutshell',
+    duration: '8–12 min',
+    url:      'https://www.youtube.com/results?search_query=therapy+in+a+nutshell+how+to+stop+panic+attack&sp=EgIYBA%3D%3D',
+    icon:     'fa-heart-crack',
+    color:    'red',
+    tagline:  'Physiology + evidence-based interruption technique.',
+    desc:     'Explains exactly what happens in your body during a panic attack — and why it feels like danger but isn\'t. Covers grounding, interoceptive exposure, and cognitive defusion to interrupt the spiral mid-way.',
+    topics:   ['Panic Disorder', 'Grounding Technique', 'Interoceptive Exposure', 'Anxiety Cycle'],
+    priority: (a) => a >= 2 ? 95 : 55,
+  },
+  {
+    id:       'claire_weekes',
+    title:    'Dr. Claire Weekes — Float Through Anxiety',
+    channel:  'Anxiety Recovery',
+    duration: '8–15 min',
+    url:      'https://www.youtube.com/results?search_query=claire+weekes+accept+float+anxiety+recovery&sp=EgIYBA%3D%3D',
+    icon:     'fa-water',
+    color:    'sky',
+    tagline:  'Accept, float, let time pass. The original anxiety cure.',
+    desc:     'Dr. Claire Weekes pioneered the acceptance method for anxiety — the insight that fighting the sensations is what maintains them. Float rather than resist. This approach specifically targets the "fear of fear" that keeps health anxiety alive.',
+    topics:   ['Acceptance Method', 'Fear of Fear', 'Float Protocol', 'Recovery Mindset'],
+    priority: (a) => a >= 1 ? 90 : 50,
+  },
+  {
+    id:       'ocd_erp',
+    title:    'ERP for OCD & Health OCD — Gold Standard Protocol',
+    channel:  'NOCD Therapy',
+    duration: '10–15 min',
+    url:      'https://www.youtube.com/results?search_query=ERP+exposure+response+prevention+OCD+health+anxiety+protocol&sp=EgIYBA%3D%3D',
+    icon:     'fa-arrows-spin',
+    color:    'violet',
+    tagline:  'The only evidence-based OCD treatment that works.',
+    desc:     'ERP (Exposure and Response Prevention) is the gold-standard for OCD and health OCD. You face the feared situation, resist the compulsion, and the anxiety falls on its own — because it always does. This video teaches you the exact framework.',
+    topics:   ['ERP Protocol', 'OCD Loops', 'Compulsion Breaking', 'Habituation Science'],
+    priority: (a) => a >= 3 ? 85 : 40,
+  },
+  {
+    id:       'vagus_nerve',
+    title:    'Vagus Nerve Reset — Activate Your Calm System',
+    channel:  'Huberman Lab',
+    duration: '10–15 min',
+    url:      'https://www.youtube.com/results?search_query=huberman+lab+vagus+nerve+calm+anxiety+breathing&sp=EgIYBA%3D%3D',
+    icon:     'fa-network-wired',
+    color:    'teal',
+    tagline:  'Neuroscience-backed off-switch for the stress response.',
+    desc:     'Huberman explains the vagus nerve pathway and how specific breathing patterns, cold exposure, and humming directly stimulate it — activating your parasympathetic nervous system and physically switching off the anxiety response.',
+    topics:   ['Vagus Nerve', 'Parasympathetic Switch', 'Breathing Protocol', 'Cold Exposure'],
+    priority: () => 80,
+  },
+  {
+    id:       'cognitive_defusion',
+    title:    'Cognitive Defusion — Stop Believing Anxious Thoughts',
     channel:  'Kati Morton',
-    handle:   '@KatiMorton',
-    url:      'https://www.youtube.com/@KatiMorton',
-    icon:     'fa-comment-medical',
+    duration: '8–12 min',
+    url:      'https://www.youtube.com/results?search_query=cognitive+defusion+ACT+therapy+anxious+thoughts&sp=EgIYBA%3D%3D',
+    icon:     'fa-comment-slash',
     color:    'pink',
-    tagline:  'Licensed therapist — mental health made clear',
-    desc:     'Kati Morton is a licensed marriage and family therapist covering anxiety disorders, OCD, health anxiety, and panic in clear, non-clinical language — great companion resource to professional therapy.',
-    topics:   ['OCD & Health Anxiety', 'Panic Disorder', 'Therapy Techniques', 'Self-Care Strategies'],
-    triggers: { anxiety: 3, health_anxiety: 4 },
-    baseScore: 45,
+    tagline:  'ACT therapy — you are not your thoughts.',
+    desc:     'Cognitive defusion from ACT (Acceptance & Commitment Therapy) trains you to see thoughts as just words, not facts. Critical for health anxiety, where the mind treats "I might be sick" as a truth requiring immediate investigation.',
+    topics:   ['ACT Technique', 'Thought Defusion', 'Observer Self', 'Mindful Distance'],
+    priority: (a) => a >= 1 ? 78 : 45,
+  },
+  {
+    id:       'exercise_mental_health',
+    title:    'Exercise Is Medicine — Anxiety & Depression Science',
+    channel:  'Huberman Lab',
+    duration: '10–15 min',
+    url:      'https://www.youtube.com/results?search_query=exercise+mental+health+anxiety+depression+neuroscience&sp=EgIYBA%3D%3D',
+    icon:     'fa-dumbbell',
+    color:    'emerald',
+    tagline:  'Your workout is literally a prescription drug.',
+    desc:     'The neuroscience of why exercise is clinically equivalent to SSRIs for mild-moderate anxiety and depression. Covers BDNF, serotonin upregulation, cortisol clearance, and why skipping workouts specifically worsens anxiety sensitivity.',
+    topics:   ['Exercise & Anxiety', 'BDNF & Brain', 'Cortisol Reset', 'Workout as Treatment'],
+    priority: (a, w) => w < 3 ? 88 : 65,
+  },
+  {
+    id:       'sleep_anxiety',
+    title:    'Sleep & Anxiety — Breaking the Two-Way Trap',
+    channel:  'Matthew Walker',
+    duration: '8–12 min',
+    url:      'https://www.youtube.com/results?search_query=matthew+walker+sleep+anxiety+depression+short&sp=EgIYBA%3D%3D',
+    icon:     'fa-moon',
+    color:    'indigo',
+    tagline:  'Why poor sleep creates anxiety, and how to fix it.',
+    desc:     "Sleep scientist Matthew Walker explains the bidirectional trap: anxiety disrupts sleep, poor sleep amplifies anxiety sensitivity the next day. Covers the neuroscience and practical protocols to break out — no sleeping pills required.",
+    topics:   ['Sleep & Anxiety Link', 'REM & Emotional Regulation', 'Sleep Protocol', 'Wind-Down Routine'],
+    priority: () => 70,
   },
 ];
 
@@ -205,17 +324,27 @@ export function renderResources() {
         </div>
       </div>
 
-      <!-- YouTube Resources -->
+      <!-- Learning Protocols -->
+      <div>
+        <div class="flex items-center gap-2 px-1 mb-2">
+          <i class="fa-solid fa-graduation-cap text-sky-400 text-lg"></i>
+          <h3 class="text-white font-bold text-lg">Learning Protocols</h3>
+        </div>
+        <p id="learning-context" class="text-slate-400 text-xs px-1 mb-4 leading-relaxed">Clinical techniques and science — ranked by what's most relevant to you right now.</p>
+        <div id="learning-grid" class="space-y-4">
+          <p class="text-slate-600 text-sm text-center py-4">Loading protocols…</p>
+        </div>
+      </div>
+
+      <!-- Short Motivation Videos -->
       <div>
         <div class="flex items-center gap-2 px-1 mb-4">
           <i class="fa-brands fa-youtube text-red-500 text-lg"></i>
-          <h3 class="text-white font-bold text-lg">Your Resource Stack</h3>
+          <h3 class="text-white font-bold text-lg">Short Motivation Videos</h3>
         </div>
         <p id="resources-context" class="text-slate-400 text-xs px-1 mb-4 leading-relaxed"></p>
         <div id="resources-grid" class="space-y-4">
-          <div class="flex items-center justify-center py-6">
-            <i class="fa-solid fa-circle-notch fa-spin text-red-400 text-xl"></i>
-          </div>
+          <p class="text-slate-600 text-sm text-center py-4">Loading videos…</p>
         </div>
       </div>
 
@@ -225,27 +354,54 @@ export function renderResources() {
 
 // ─── Init ─────────────────────────────────────────────────────
 export async function initResources(userId, userProfile, authUser = null) {
-  const today        = new Date().toISOString().split('T')[0];
-  const days14Ago    = new Date(Date.now() - 13 * 864e5).toISOString().split('T')[0];
-  const days30Ago    = new Date(Date.now() - 30 * 864e5).toISOString().split('T')[0];
+  try {
+    const days14Ago = new Date(Date.now() - 13 * 864e5).toISOString().split('T')[0];
+    const days30Ago = new Date(Date.now() - 30 * 864e5).toISOString().split('T')[0];
 
-  // Load all data in parallel
-  const [habitsRes, anxietyRes, workoutsRes] = await Promise.allSettled([
-    supabase.from('habits').select('*').eq('user_id', userId).gte('date', days14Ago).order('date', { ascending: true }),
-    supabase.from('anxiety_vault').select('id').eq('user_id', userId).gte('created_at', days30Ago),
-    supabase.from('workout_logs').select('id').eq('user_id', userId).gte('date', days14Ago),
-  ]);
+    // Load all data in parallel — allSettled so one failure doesn't block others
+    const [habitsRes, anxietyRes, workoutsRes] = await Promise.allSettled([
+      supabase.from('habits').select('*').eq('user_id', userId).gte('date', days14Ago).order('date', { ascending: true }),
+      supabase.from('anxiety_vault').select('id').eq('user_id', userId).gte('created_at', days30Ago),
+      supabase.from('workout_logs').select('id').eq('user_id', userId).gte('date', days14Ago),
+    ]);
 
-  const habits14  = habitsRes.status === 'fulfilled'  ? (habitsRes.value.data  || []) : [];
-  const anxietyCount = anxietyRes.status === 'fulfilled' ? (anxietyRes.value.data?.length || 0) : 0;
-  const workoutCount = workoutsRes.status === 'fulfilled' ? (workoutsRes.value.data?.length || 0) : 0;
+    const habits14     = habitsRes.status   === 'fulfilled' ? (habitsRes.value.data   || []) : [];
+    const anxietyCount = anxietyRes.status  === 'fulfilled' ? (anxietyRes.value.data?.length  || 0) : 0;
+    const workoutCount = workoutsRes.status === 'fulfilled' ? (workoutsRes.value.data?.length || 0) : 0;
 
-  const profile = userProfile || {};
+    const profile = userProfile || {};
 
-  renderProgressHero(profile, authUser);
-  renderHeatmap(habits14);
-  renderMilestones(profile, habits14, anxietyCount);
-  renderResourceCards(profile, habits14, anxietyCount, workoutCount);
+    renderProgressHero(profile, authUser);
+    renderHeatmap(habits14);
+    renderMilestones(profile, habits14, anxietyCount);
+    renderLearningSection(habits14, anxietyCount, workoutCount);
+    renderResourceCards(profile, habits14, anxietyCount, workoutCount);
+
+  } catch (err) {
+    console.error('[Resources] Init failed:', err);
+
+    // Ensure no section stays stuck in a spinner state
+    const hero = document.getElementById('progress-hero');
+    if (hero) hero.innerHTML = `
+      <div class="flex items-start gap-4">
+        <div class="w-12 h-12 rounded-full bg-slate-700/50 flex items-center justify-center flex-shrink-0">
+          <i class="fa-solid fa-user text-slate-500 text-lg"></i>
+        </div>
+        <div>
+          <p class="text-white font-bold text-lg">Your Journey</p>
+          <p class="text-slate-500 text-sm mt-1">Start logging habits to see your progress here.</p>
+        </div>
+      </div>`;
+
+    const milestonesGrid = document.getElementById('milestones-grid');
+    if (milestonesGrid) milestonesGrid.innerHTML =
+      '<p class="text-slate-600 text-sm text-center col-span-3 py-4">Log habits to unlock badges.</p>';
+
+    // Still render both video sections — they're static and don't need DB data
+    const profile = userProfile || {};
+    renderLearningSection([], 0, 0);
+    renderResourceCards(profile, [], 0, 0);
+  }
 }
 
 // ─── Name extraction helpers ──────────────────────────────────
@@ -530,12 +686,12 @@ function renderResourceCards(profile, habits14, anxietyCount, workoutCount) {
   // Context blurb
   if (ctxEl) {
     const parts = [];
-    if (anxietyCount >= 3) parts.push('mental health resources prioritised based on your vault activity');
-    if (workoutCount < 3)  parts.push('fitness foundations emphasised to build workout consistency');
-    if ((profile.current_level || 1) >= 7) parts.push('advanced performance channels surfaced for your level');
+    if (anxietyCount >= 3) parts.push('anxiety management videos prioritised based on your Vault activity');
+    if (workoutCount < 3)  parts.push('discipline and gym motivation surfaced to rebuild workout consistency');
+    if ((profile.current_level || 1) >= 7) parts.push('advanced performance picks unlocked for your level');
     ctxEl.textContent = parts.length
-      ? `Curated for you — ${parts.join('; ')}.`
-      : 'Curated based on your habits and progress. Every channel below is peer-reviewed, evidence-based, and zero fluff.';
+      ? `Curated short videos for you — ${parts.join('; ')}.`
+      : 'Curated short motivational videos — all under 15 minutes, zero filler. Watch one whenever you need a reset.';
   }
 
   // Top 4 featured
@@ -550,7 +706,7 @@ function renderResourceCards(profile, habits14, anxietyCount, workoutCount) {
       <button id="show-more-resources"
         class="w-full text-slate-500 hover:text-slate-300 text-sm py-2 border border-dashed border-slate-700/50
                rounded-xl hover:border-slate-600 transition-colors">
-        <i class="fa-solid fa-chevron-down mr-2"></i>Show ${rest.length} more channels
+        <i class="fa-solid fa-chevron-down mr-2"></i>Show ${rest.length} more videos
       </button>
       <div id="more-resources" class="hidden space-y-4 mt-4">
         ${rest.map((r) => resourceCard(r, false)).join('')}
@@ -565,7 +721,7 @@ function renderResourceCards(profile, habits14, anxietyCount, workoutCount) {
     more.classList.toggle('hidden', !hidden);
     btn.innerHTML = hidden
       ? '<i class="fa-solid fa-chevron-up mr-2"></i>Show less'
-      : `<i class="fa-solid fa-chevron-down mr-2"></i>Show ${rest.length} more channels`;
+      : `<i class="fa-solid fa-chevron-down mr-2"></i>Show ${rest.length} more videos`;
   });
 }
 
@@ -588,10 +744,16 @@ function resourceCard(r, featured = false) {
           </div>
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 flex-wrap">
-              <p class="text-white font-semibold text-sm">${r.channel}</p>
+              <p class="text-white font-semibold text-sm leading-tight">${r.title}</p>
               ${featured ? `<span class="bg-amber-500/20 text-amber-400 text-xs px-1.5 py-0.5 rounded font-medium">Top Pick</span>` : ''}
             </div>
-            <p class="text-${r.color}-400 text-xs mt-0.5">${r.tagline}</p>
+            <div class="flex items-center gap-2 mt-0.5">
+              <p class="text-${r.color}-400 text-xs">${r.channel}</p>
+              <span class="text-slate-700 text-xs">·</span>
+              <span class="text-slate-500 text-xs flex items-center gap-1">
+                <i class="fa-regular fa-clock"></i>${r.duration}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -604,7 +766,107 @@ function resourceCard(r, featured = false) {
                  bg-red-600 hover:bg-red-500 text-white font-semibold
                  py-2.5 rounded-xl transition-colors text-sm">
           <i class="fa-brands fa-youtube text-base"></i>
-          Open ${r.channel}
+          Watch Now
+          <i class="fa-solid fa-arrow-up-right-from-square text-xs opacity-70"></i>
+        </a>
+      </div>
+    </div>
+  `;
+}
+
+// ─── Learning protocols ───────────────────────────────────────
+function renderLearningSection(habits14, anxietyCount, workoutCount) {
+  const container = document.getElementById('learning-grid');
+  const ctxEl     = document.getElementById('learning-context');
+  if (!container) return;
+
+  // Score each protocol by how relevant it is to this user right now
+  const scored = LEARNING_LIBRARY.map((v) => ({
+    ...v,
+    score: v.priority(anxietyCount, workoutCount),
+  })).sort((a, b) => b.score - a.score);
+
+  // Update context line
+  if (ctxEl) {
+    if (anxietyCount >= 3)
+      ctxEl.textContent = `Based on your Symptom Vault activity (${anxietyCount} entries), anxiety management protocols have been prioritised for you.`;
+    else if (workoutCount < 3)
+      ctxEl.textContent = 'Exercise protocols ranked first — consistency in movement directly reduces anxiety sensitivity.';
+    else
+      ctxEl.textContent = 'Clinical techniques and science — ranked by what is most relevant to your current habits and vault data.';
+  }
+
+  const top3 = scored.slice(0, 3);
+  const rest  = scored.slice(3);
+
+  container.innerHTML = `
+    ${top3.map((v, i) => learningCard(v, i === 0)).join('')}
+
+    <div>
+      <button id="show-more-learning"
+        class="w-full text-slate-500 hover:text-slate-300 text-sm py-2 border border-dashed border-slate-700/50
+               rounded-xl hover:border-slate-600 transition-colors">
+        <i class="fa-solid fa-chevron-down mr-2"></i>Show ${rest.length} more protocols
+      </button>
+      <div id="more-learning" class="hidden space-y-4 mt-4">
+        ${rest.map((v) => learningCard(v, false)).join('')}
+      </div>
+    </div>
+  `;
+
+  document.getElementById('show-more-learning')?.addEventListener('click', (e) => {
+    const more   = document.getElementById('more-learning');
+    const btn    = e.currentTarget;
+    const hidden = more.classList.contains('hidden');
+    more.classList.toggle('hidden', !hidden);
+    btn.innerHTML = hidden
+      ? '<i class="fa-solid fa-chevron-up mr-2"></i>Show less'
+      : `<i class="fa-solid fa-chevron-down mr-2"></i>Show ${rest.length} more protocols`;
+  });
+}
+
+function learningCard(v, featured = false) {
+  const topicsHtml = v.topics.map((t) => `
+    <span class="inline-flex items-center gap-1 text-xs text-${v.color}-400/80 bg-${v.color}-500/10
+                 border border-${v.color}-500/20 rounded-full px-2.5 py-0.5">${t}</span>`
+  ).join('');
+
+  return `
+    <div class="bg-navy-600 rounded-2xl border ${featured ? `border-${v.color}-500/40 shadow-lg` : 'border-slate-700/50'} overflow-hidden">
+
+      ${featured ? `<div class="h-0.5 bg-gradient-to-r from-${v.color}-600 to-${v.color}-400"></div>` : ''}
+
+      <div class="p-5">
+        <div class="flex items-start gap-3 mb-3">
+          <div class="w-11 h-11 rounded-xl bg-${v.color}-500/20 border border-${v.color}-500/30
+                      flex items-center justify-center flex-shrink-0">
+            <i class="fa-solid ${v.icon} text-${v.color}-400"></i>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <p class="text-white font-semibold text-sm leading-tight">${v.title}</p>
+              ${featured ? `<span class="bg-sky-500/20 text-sky-400 text-xs px-1.5 py-0.5 rounded font-medium">Most Relevant</span>` : ''}
+            </div>
+            <div class="flex items-center gap-2 mt-0.5">
+              <p class="text-${v.color}-400 text-xs">${v.channel}</p>
+              <span class="text-slate-700 text-xs">·</span>
+              <span class="text-slate-500 text-xs flex items-center gap-1">
+                <i class="fa-regular fa-clock"></i>${v.duration}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <p class="text-slate-400 text-xs leading-relaxed mb-3">${v.desc}</p>
+
+        <div class="flex flex-wrap gap-1.5 mb-4">${topicsHtml}</div>
+
+        <a href="${v.url}" target="_blank" rel="noopener noreferrer"
+          class="flex items-center justify-center gap-2.5 w-full
+                 bg-slate-700 hover:bg-slate-600 border border-slate-600/50
+                 text-white font-semibold py-2.5 rounded-xl transition-colors text-sm">
+          <i class="fa-brands fa-youtube text-red-400 text-base"></i>
+          Watch Protocol
           <i class="fa-solid fa-arrow-up-right-from-square text-xs opacity-70"></i>
         </a>
       </div>
