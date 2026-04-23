@@ -16,7 +16,7 @@ const INTEREST_OPTIONS = [
 // ─── State ────────────────────────────────────────────────────
 let state = {
   height: '', weight: '', bmi: null, step: 1,
-  username: '', hasAnxiety: null, interests: [],
+  username: '', hasAnxiety: null, interests: [], vices: [], dob: '',
 };
 
 // ─── Render ───────────────────────────────────────────────────
@@ -55,7 +55,7 @@ const VICE_OPTIONS = [
 ];
 
 export function initOnboarding(userId, onComplete) {
-  state = { height: '', weight: '', bmi: null, step: 1, username: '', hasAnxiety: null, interests: [], vices: [] };
+  state = { height: '', weight: '', bmi: null, step: 1, username: '', hasAnxiety: null, interests: [], vices: [], dob: '' };
   renderStep(userId, onComplete);
 }
 
@@ -301,6 +301,15 @@ function renderStep3(el, userId, onComplete) {
             <span class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm">kg</span>
           </div>
         </div>
+
+        <div>
+          <label class="form-label">Date of Birth</label>
+          <input id="ob-dob" type="date"
+            value="${state.dob}"
+            max="${new Date().toISOString().split('T')[0]}"
+            class="input-field" />
+          <p class="text-slate-500 text-xs mt-1.5">Used to personalise your heart rate training zones for VO₂ Max.</p>
+        </div>
       </div>
 
       <div id="ob-bmi-preview" class="hidden p-4 rounded-xl border text-center"></div>
@@ -353,9 +362,10 @@ function renderStep3(el, userId, onComplete) {
   });
 
   document.getElementById('ob-next-3')?.addEventListener('click', () => {
-    const h = parseFloat(heightEl.value);
-    const w = parseFloat(weightEl.value);
-    const errEl = document.getElementById('ob-error');
+    const h      = parseFloat(heightEl.value);
+    const w      = parseFloat(weightEl.value);
+    const dobVal = document.getElementById('ob-dob')?.value || '';
+    const errEl  = document.getElementById('ob-error');
 
     if (!h || h < 100 || h > 250) {
       errEl.textContent = 'Please enter a valid height (100–250 cm).';
@@ -372,9 +382,62 @@ function renderStep3(el, userId, onComplete) {
     state.height = h;
     state.weight = w;
     state.bmi    = calcBMI(w, h);
+    state.dob    = dobVal;
     state.step   = 4;
     renderStep(userId, onComplete);
   });
+}
+
+// ─── HR Zone helpers ──────────────────────────────────────────
+function _calcAge(dob) {
+  if (!dob) return null;
+  const today  = new Date();
+  const birth  = new Date(dob);
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  return age > 0 && age < 120 ? age : null;
+}
+
+function _hrZonesHtml(dob) {
+  const age = _calcAge(dob);
+  if (!age) return '';
+
+  const maxHR = 220 - age;
+  const zones = [
+    { num: 1, name: 'Active Recovery',    pct: '50–60%', lo: Math.round(maxHR * 0.50), hi: Math.round(maxHR * 0.60), color: 'sky',     tip: 'Warm-up, cool-down, easy movement' },
+    { num: 2, name: 'Aerobic Base',       pct: '60–70%', lo: Math.round(maxHR * 0.60), hi: Math.round(maxHR * 0.70), color: 'emerald', tip: '80% of your weekly volume here — builds VO₂ Max foundation' },
+    { num: 3, name: 'Aerobic Threshold',  pct: '70–80%', lo: Math.round(maxHR * 0.70), hi: Math.round(maxHR * 0.80), color: 'yellow',  tip: 'Moderate-hard — sustainable tempo effort' },
+    { num: 4, name: 'Lactate Threshold',  pct: '80–90%', lo: Math.round(maxHR * 0.80), hi: Math.round(maxHR * 0.90), color: 'orange',  tip: '4×4 intervals here are the strongest VO₂ Max stimulus' },
+    { num: 5, name: 'VO₂ Max Peak',       pct: '90–100%',lo: Math.round(maxHR * 0.90), hi: maxHR,                    color: 'red',     tip: 'Short max-effort sprints — 20% of weekly volume' },
+  ];
+
+  const zoneRows = zones.map((z) => `
+    <div class="flex items-center gap-3 py-2.5 border-b border-slate-700/40 last:border-0">
+      <div class="w-7 h-7 rounded-lg bg-${z.color}-500/20 flex items-center justify-center flex-shrink-0">
+        <span class="text-${z.color}-400 text-xs font-bold">${z.num}</span>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center justify-between">
+          <span class="text-white text-xs font-medium">${z.name}</span>
+          <span class="text-${z.color}-400 text-xs font-bold tabular-nums">${z.lo}–${z.hi} bpm</span>
+        </div>
+        <p class="text-slate-500 text-xs leading-tight mt-0.5 truncate">${z.tip}</p>
+      </div>
+    </div>
+  `).join('');
+
+  return `
+    <div class="bg-navy-700/60 border border-slate-700/50 rounded-2xl p-4">
+      <div class="flex items-center gap-2 mb-1">
+        <i class="fa-solid fa-heart-pulse text-red-400 text-sm"></i>
+        <p class="text-white text-sm font-semibold">Your HR Training Zones</p>
+        <span class="ml-auto text-slate-500 text-xs">Age ${age} · Max HR ${maxHR} bpm</span>
+      </div>
+      <p class="text-slate-500 text-xs mb-3">Train Zone 2 for base + Zone 4 intervals for VO₂ Max gains.</p>
+      <div>${zoneRows}</div>
+    </div>
+  `;
 }
 
 // Step 4 — BMI result + save
@@ -476,6 +539,9 @@ function renderStep4(el, userId, onComplete) {
         </div>
       </div>
 
+      <!-- HR Zones (only when DOB provided) -->
+      ${_hrZonesHtml(state.dob)}
+
       <div class="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-4">
         <p class="text-indigo-300 text-xs text-center leading-relaxed">
           <i class="fa-solid fa-circle-info mr-1"></i>
@@ -517,24 +583,31 @@ function renderStep4(el, userId, onComplete) {
     saveSpinner.classList.remove('hidden');
 
     try {
+      // ── Ensure user profile row exists (guards against post-TRUNCATE FK failures) ──
+      await supabase.from('users').upsert({ id: userId }, { onConflict: 'id' });
+
       // Save biometrics via RPC
-      const { error: rpcErr } = await supabase.rpc('save_biometrics', {
+      const rpcPayload = {
         p_user_id:   userId,
         p_height_cm: Math.round(state.height),
         p_weight_kg: state.weight,
         p_bmi:       state.bmi,
-      });
+      };
+      if (state.dob) rpcPayload.p_dob = state.dob;
+      const { error: rpcErr } = await supabase.rpc('save_biometrics', rpcPayload);
       if (rpcErr) throw rpcErr;
 
-      // Save profile preferences (username, interests, vices, anxiety flag)
+      // Save profile preferences (username, interests, vices, anxiety flag, dob)
+      const profileUpdate = {
+        username:    state.username  || null,
+        interests:   state.interests.length ? state.interests : null,
+        vices:       state.vices.length     ? state.vices     : null,
+        has_anxiety: state.hasAnxiety       ?? null,
+      };
+      if (state.dob) profileUpdate.date_of_birth = state.dob;
       const { error: profileErr } = await supabase
         .from('users')
-        .update({
-          username:    state.username  || null,
-          interests:   state.interests.length ? state.interests : null,
-          vices:       state.vices.length     ? state.vices     : null,
-          has_anxiety: state.hasAnxiety       ?? null,
-        })
+        .update(profileUpdate)
         .eq('id', userId);
       if (profileErr) console.warn('[Onboarding] Profile save warning:', profileErr);
 

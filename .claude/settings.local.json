@@ -3,7 +3,8 @@
     "allow": [
       "Bash(npm install:*)",
       "Bash(git version:*)",
-      "Bash(echo \"exit: $?\")"
+      "Bash(echo \"exit: $?\")",
+      "Bash(dir C:\\\\Users\\\\T0263684\\\\Desktop\\\\WORK\\\\CODE\\\\Infrastructure Code\\\\personal-projects\\\\Discipline-Tracker\\\\public:*)"
     ]
   }
 }
