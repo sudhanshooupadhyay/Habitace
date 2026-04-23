@@ -583,8 +583,8 @@ function renderStep4(el, userId, onComplete) {
     saveSpinner.classList.remove('hidden');
 
     try {
-      // ── Ensure user profile row exists (guards against post-TRUNCATE FK failures) ──
-      await supabase.from('users').upsert({ id: userId }, { onConflict: 'id' });
+      // ── Ensure user profile row exists (SECURITY DEFINER fn reads auth.users) ──
+      await supabase.rpc('ensure_user_profile', { p_user_id: userId });
 
       // Save biometrics via RPC
       const rpcPayload = {

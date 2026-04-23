@@ -1,5 +1,5 @@
 import './style.css';
-import { supabase, fetchUser, getSession, signOut } from './lib/supabase.js';
+import { supabase, fetchUser, ensureUserProfile, getSession, signOut } from './lib/supabase.js';
 import { renderAuth, initAuth, renderPasswordReset, initPasswordReset } from './components/auth.js';
 import { renderDashboard, initDashboard } from './components/dashboard.js';
 import { renderVault, initVault } from './components/symptomVault.js';
@@ -80,11 +80,13 @@ function renderLoginScreen() {
 
 // ─── Main app shell ───────────────────────────────────────────
 async function loadApp() {
+  // Guarantee the public.users row exists — handles post-TRUNCATE and first-login races
+  await ensureUserProfile(currentUser.id);
+
   try {
     currentProfile = await fetchUser(currentUser.id);
   } catch (_) {
-    // Profile not yet created (trigger handles it); retry once
-    await new Promise((r) => setTimeout(r, 800));
+    await new Promise((r) => setTimeout(r, 500));
     try { currentProfile = await fetchUser(currentUser.id); } catch (_) {}
   }
 

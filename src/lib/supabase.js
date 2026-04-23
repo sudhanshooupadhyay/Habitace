@@ -42,12 +42,18 @@ export async function getSession() {
 
 // ─── User helpers ────────────────────────────────────────────
 
+// Ensures a profile row exists (calls SECURITY DEFINER fn that reads auth.users)
+export async function ensureUserProfile(userId) {
+  const { error } = await supabase.rpc('ensure_user_profile', { p_user_id: userId });
+  if (error) console.warn('[Auth] ensure_user_profile warning:', error.message);
+}
+
 export async function fetchUser(userId) {
   const { data, error } = await supabase
     .from('users')
     .select('*')
     .eq('id', userId)
-    .single();
+    .maybeSingle();          // returns null instead of 406 when row missing
   if (error) throw error;
   return data;
 }
