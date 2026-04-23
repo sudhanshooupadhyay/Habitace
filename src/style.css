@@ -1,0 +1,150 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Google Fonts ────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
+
+/* ── Base ────────────────────────────────────────────────────── */
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-navy-800 text-slate-200 font-sans;
+    min-height: 100dvh;
+  }
+
+  ::-webkit-scrollbar {
+    width: 4px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-navy-800;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-600 rounded-full;
+  }
+}
+
+/* ── Component Utilities ─────────────────────────────────────── */
+@layer components {
+
+  /* Auth tabs */
+  .auth-tab {
+    @apply text-slate-400 border-b-2 border-transparent hover:text-white transition-all duration-200;
+  }
+  .auth-tab.active {
+    @apply text-white border-indigo-500;
+  }
+
+  /* Form inputs */
+  .input-field {
+    @apply w-full bg-navy-700 border border-slate-600/60 rounded-xl px-4 py-3 text-white
+           placeholder-slate-500 text-sm
+           focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent
+           transition-all duration-200;
+  }
+
+  /* Form labels */
+  .form-label {
+    @apply block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider;
+  }
+
+  /* Primary button */
+  .btn-primary {
+    @apply bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-6 rounded-xl
+           transition-all duration-200
+           focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 focus:ring-offset-navy-600
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* Secondary button */
+  .btn-secondary {
+    @apply bg-slate-700 hover:bg-slate-600 text-white font-medium py-2.5 px-5 rounded-xl
+           transition-all duration-200
+           focus:outline-none focus:ring-2 focus:ring-slate-500;
+  }
+
+  /* Nav item */
+  .nav-item {
+    @apply flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all duration-200
+           text-slate-500 hover:text-slate-300 cursor-pointer;
+  }
+  .nav-item.active {
+    @apply text-indigo-400 bg-indigo-500/10;
+  }
+  .nav-item i {
+    @apply text-lg;
+  }
+  .nav-item span {
+    @apply text-xs font-medium;
+  }
+
+  /* Card */
+  .card {
+    @apply bg-navy-600 rounded-2xl border border-slate-700/50 p-6;
+  }
+
+  /* Section heading */
+  .section-heading {
+    @apply text-white font-semibold text-lg flex items-center gap-2 mb-5;
+  }
+
+  /* Habit row (used in dashboard) */
+  .habit-row {
+    @apply transition-all duration-300;
+  }
+
+  /* Vault entry */
+  .vault-entry {
+    @apply animate-fade-in;
+  }
+
+  /* Truncate long vault text */
+  .truncate-entry {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+/* ── Breathing animation overrides ───────────────────────────── */
+#breath-circle,
+#breath-fs-circle {
+  transition: transform 4s ease-in-out, border-color 4s ease-in-out, box-shadow 4s ease-in-out;
+}
+#breath-ring {
+  transition: transform 4s ease-in-out, opacity 4s ease-in-out;
+}
+
+/* ── Loading shimmer ─────────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg, #1e293b 25%, #273548 50%, #1e293b 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* ── Toast notifications ─────────────────────────────────────── */
+#toast-container {
+  @apply fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none;
+}
+.toast {
+  @apply pointer-events-auto animate-slide-up;
+}
+
+/* ── Mobile safe area ────────────────────────────────────────── */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 1rem);
+}
