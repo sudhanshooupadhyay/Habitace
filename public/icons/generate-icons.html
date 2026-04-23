@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Generate PWA Icons</title>
+  <style>
+    body { font-family: sans-serif; background: #0f172a; color: #e2e8f0; padding: 2rem; }
+    canvas { border: 1px solid #334155; margin: 0.5rem; }
+    button { background: #6366f1; color: white; border: none; padding: 0.75rem 1.5rem;
+             border-radius: 8px; cursor: pointer; font-size: 1rem; margin-top: 1rem; }
+    button:hover { background: #4f46e5; }
+    p { color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <h2>Discipline Tracker — PWA Icon Generator</h2>
+  <p>Click "Generate & Download" — it will save icon-192.png, icon-512.png, and badge-72.png to your Downloads folder.
+     Move them into <code>public/icons/</code> then redeploy.</p>
+
+  <div id="previews"></div>
+  <button onclick="generateAll()">Generate & Download All Icons</button>
+
+  <script>
+    const SIZES = [
+      { name: 'icon-192.png', size: 192 },
+      { name: 'icon-512.png', size: 512 },
+      { name: 'badge-72.png', size: 72  },
+    ];
+
+    function drawIcon(canvas, size) {
+      const ctx  = canvas.getContext('2d');
+      const s    = size;
+      canvas.width  = s;
+      canvas.height = s;
+
+      const r = s * 0.22; // corner radius
+
+      // Background gradient
+      const bg = ctx.createLinearGradient(0, 0, s, s);
+      bg.addColorStop(0, '#1e1b4b');
+      bg.addColorStop(1, '#0f172a');
+
+      // Rounded rect clip
+      ctx.beginPath();
+      ctx.moveTo(r, 0);
+      ctx.lineTo(s - r, 0);
+      ctx.quadraticCurveTo(s, 0, s, r);
+      ctx.lineTo(s, s - r);
+      ctx.quadraticCurveTo(s, s, s - r, s);
+      ctx.lineTo(r, s);
+      ctx.quadraticCurveTo(0, s, 0, s - r);
+      ctx.lineTo(0, r);
+      ctx.quadraticCurveTo(0, 0, r, 0);
+      ctx.closePath();
+      ctx.fillStyle = bg;
+      ctx.fill();
+      ctx.save();
+      ctx.clip();
+
+      // Border glow
+      ctx.strokeStyle = 'rgba(99,102,241,0.35)';
+      ctx.lineWidth = s * 0.02;
+      ctx.beginPath();
+      ctx.moveTo(r, 0);
+      ctx.lineTo(s - r, 0);
+      ctx.quadraticCurveTo(s, 0, s, r);
+      ctx.lineTo(s, s - r);
+      ctx.quadraticCurveTo(s, s, s - r, s);
+      ctx.lineTo(r, s);
+      ctx.quadraticCurveTo(0, s, 0, s - r);
+      ctx.lineTo(0, r);
+      ctx.quadraticCurveTo(0, 0, r, 0);
+      ctx.closePath();
+      ctx.stroke();
+
+      if (size <= 72) {
+        // Badge — just a bold "D"
+        const ig = ctx.createLinearGradient(0, 0, s, s);
+        ig.addColorStop(0, '#818cf8');
+        ig.addColorStop(1, '#6366f1');
+        ctx.font = `bold ${Math.round(s * 0.65)}px Arial Black, sans-serif`;
+        ctx.fillStyle = ig;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('D', s / 2, s / 2 + s * 0.04);
+      } else {
+        // Full brain icon using scaled paths
+        const sc = s / 512;
+        const ig = ctx.createLinearGradient(0, 0, s, s);
+        ig.addColorStop(0, '#6366f1');
+        ig.addColorStop(1, '#8b5cf6');
+
+        ctx.fillStyle = ig;
+        ctx.globalAlpha = 0.9;
+
+        // Left hemisphere
+        ctx.beginPath();
+        ctx.moveTo(180*sc, 170*sc);
+        ctx.bezierCurveTo(140*sc,170*sc, 110*sc,198*sc, 110*sc,234*sc);
+        ctx.bezierCurveTo(110*sc,252*sc, 118*sc,268*sc, 131*sc,280*sc);
+        ctx.bezierCurveTo(120*sc,292*sc, 114*sc,308*sc, 116*sc,326*sc);
+        ctx.bezierCurveTo(118*sc,352*sc, 138*sc,372*sc, 162*sc,374*sc);
+        ctx.bezierCurveTo(170*sc,374*sc, 178*sc,372*sc, 185*sc,368*sc);
+        ctx.lineTo(185*sc, 310*sc);
+        ctx.bezierCurveTo(175*sc,308*sc, 168*sc,300*sc, 168*sc,290*sc);
+        ctx.bezierCurveTo(168*sc,280*sc, 175*sc,272*sc, 185*sc,270*sc);
+        ctx.lineTo(185*sc, 210*sc);
+        ctx.bezierCurveTo(182*sc,202*sc, 180*sc,186*sc, 180*sc,170*sc);
+        ctx.closePath();
+        ctx.fill();
+
+        // Right hemisphere
+        ctx.beginPath();
+        ctx.moveTo(332*sc, 170*sc);
+        ctx.bezierCurveTo(372*sc,170*sc, 402*sc,198*sc, 402*sc,234*sc);
+        ctx.bezierCurveTo(402*sc,252*sc, 394*sc,268*sc, 381*sc,280*sc);
+        ctx.bezierCurveTo(392*sc,292*sc, 398*sc,308*sc, 396*sc,326*sc);
+        ctx.bezierCurveTo(394*sc,352*sc, 374*sc,372*sc, 350*sc,374*sc);
+        ctx.bezierCurveTo(342*sc,374*sc, 334*sc,372*sc, 327*sc,368*sc);
+        ctx.lineTo(327*sc, 310*sc);
+        ctx.bezierCurveTo(337*sc,308*sc, 344*sc,300*sc, 344*sc,290*sc);
+        ctx.bezierCurveTo(344*sc,280*sc, 337*sc,272*sc, 327*sc,270*sc);
+        ctx.lineTo(327*sc, 210*sc);
+        ctx.bezierCurveTo(330*sc,202*sc, 332*sc,186*sc, 332*sc,170*sc);
+        ctx.closePath();
+        ctx.fill();
+
+        // Connecting bridges
+        ctx.globalAlpha = 0.85;
+        ctx.beginPath();
+        ctx.roundRect(185*sc, 238*sc, 142*sc, 22*sc, 11*sc);
+        ctx.fill();
+
+        ctx.globalAlpha = 0.7;
+        ctx.beginPath();
+        ctx.roundRect(195*sc, 292*sc, 122*sc, 18*sc, 9*sc);
+        ctx.fill();
+
+        // Top arc
+        ctx.globalAlpha = 0.9;
+        ctx.strokeStyle = ig;
+        ctx.lineWidth   = 20*sc;
+        ctx.lineCap     = 'round';
+        ctx.beginPath();
+        ctx.moveTo(185*sc, 170*sc);
+        ctx.bezierCurveTo(185*sc,140*sc, 200*sc,128*sc, 256*sc,128*sc);
+        ctx.bezierCurveTo(312*sc,128*sc, 327*sc,140*sc, 327*sc,170*sc);
+        ctx.stroke();
+
+        // Dots
+        ctx.globalAlpha = 0.6;
+        ctx.fillStyle = '#818cf8';
+        ctx.beginPath();
+        ctx.arc(256*sc, 390*sc, 8*sc, 0, Math.PI*2);
+        ctx.fill();
+
+        ctx.globalAlpha = 0.4;
+        ctx.fillStyle = '#a5b4fc';
+        [230, 282].forEach(x => {
+          ctx.beginPath();
+          ctx.arc(x*sc, 400*sc, 5*sc, 0, Math.PI*2);
+          ctx.fill();
+        });
+      }
+
+      ctx.restore();
+    }
+
+    function generateAll() {
+      SIZES.forEach(({ name, size }) => {
+        const canvas = document.createElement('canvas');
+        drawIcon(canvas, size);
+        const a = document.createElement('a');
+        a.download = name;
+        a.href = canvas.toDataURL('image/png');
+        a.click();
+      });
+    }
+
+    // Show previews on load
+    window.onload = () => {
+      const container = document.getElementById('previews');
+      SIZES.forEach(({ name, size }) => {
+        const label  = document.createElement('p');
+        label.textContent = name;
+        const canvas = document.createElement('canvas');
+        drawIcon(canvas, size);
+        container.appendChild(label);
+        container.appendChild(canvas);
+      });
+    };
+  </script>
+</body>
+</html>
