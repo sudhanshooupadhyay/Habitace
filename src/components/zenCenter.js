@@ -16,13 +16,33 @@ let medInterval  = null;
 let medRemaining = 5 * 60;
 let medTarget    = 5 * 60;
 let medRunning   = false;
-let medBreathDir = 1; // 1=expand, -1=contract
+
+// Ambient sound mode ('drone' | 'rain' | 'om' | 'off')
+let _ambientMode = 'drone';
 
 const MED_PRESETS = [
   { label: '3 min',  seconds: 3  * 60 },
   { label: '5 min',  seconds: 5  * 60 },
   { label: '10 min', seconds: 10 * 60 },
+  { label: '20 min', seconds: 20 * 60 },
 ];
+
+// Rotating mindfulness prompts — swap every breath cycle
+const INHALE_PROMPTS = [
+  'Breathe in slowly through your nose...',
+  'Draw in calm with every breath...',
+  'Inhale peace and stillness...',
+  'Let your lungs expand fully...',
+  'Breathe in presence...',
+];
+const EXHALE_PROMPTS = [
+  'Release gently through your mouth...',
+  'Let it all go with your breath...',
+  'Exhale tension and thought...',
+  'Soften as you breathe out...',
+  'Surrender with each exhale...',
+];
+let _promptIndex = 0;
 
 const RESOURCES = [
   {
@@ -88,7 +108,6 @@ export function renderZen() {
         <!-- Mountain & moon zen scene -->
         <svg viewBox="0 0 360 90" xmlns="http://www.w3.org/2000/svg"
              class="w-full mt-4" aria-hidden="true">
-          <!-- Stars -->
           <circle cx="18"  cy="10" r="1.2" fill="#99f6e4" opacity="0.5"/>
           <circle cx="55"  cy="5"  r="0.9" fill="#ccfbf1" opacity="0.4"/>
           <circle cx="110" cy="8"  r="1.2" fill="#99f6e4" opacity="0.5"/>
@@ -96,27 +115,19 @@ export function renderZen() {
           <circle cx="230" cy="9"  r="1"   fill="#99f6e4" opacity="0.45"/>
           <circle cx="295" cy="5"  r="1.2" fill="#ccfbf1" opacity="0.5"/>
           <circle cx="340" cy="11" r="0.9" fill="#99f6e4" opacity="0.4"/>
-          <!-- Moon -->
           <circle cx="310" cy="18" r="10" fill="#0f766e" opacity="0.25"/>
           <circle cx="314" cy="16" r="10" fill="#134e4a" opacity="0.5"/>
-          <!-- Moon glow ring -->
           <circle cx="310" cy="18" r="14" fill="none" stroke="#14b8a6" stroke-width="0.6" opacity="0.2"/>
-          <!-- Mountain range back layer -->
           <path d="M0,90 L40,55 L75,72 L115,40 L155,68 L195,35 L235,60 L270,28 L310,52 L360,38 L360,90 Z"
                 fill="#134e4a" opacity="0.35"/>
-          <!-- Mountain range front layer -->
           <path d="M0,90 L50,62 L90,78 L135,48 L175,72 L215,42 L255,65 L295,36 L335,58 L360,50 L360,90 Z"
                 fill="#0f172a" opacity="0.8"/>
-          <!-- Water reflection (bottom strip) -->
           <rect x="0" y="82" width="360" height="8" fill="#0f766e" opacity="0.1"/>
-          <!-- Reflection shimmer lines -->
           <line x1="60"  y1="84" x2="100" y2="84" stroke="#14b8a6" stroke-width="0.6" opacity="0.2"/>
           <line x1="180" y1="86" x2="230" y2="86" stroke="#14b8a6" stroke-width="0.6" opacity="0.2"/>
           <line x1="290" y1="84" x2="340" y2="84" stroke="#14b8a6" stroke-width="0.6" opacity="0.2"/>
-          <!-- Lotus at peak -->
           <circle cx="215" cy="40" r="4" fill="#0f766e" opacity="0.2"/>
           <circle cx="215" cy="42" r="2.5" fill="#14b8a6" opacity="0.5"/>
-          <!-- Petal shapes -->
           <ellipse cx="215" cy="38" rx="2" ry="3.5" fill="#14b8a6" opacity="0.35" transform="rotate(0,215,38)"/>
           <ellipse cx="215" cy="38" rx="2" ry="3.5" fill="#14b8a6" opacity="0.3"  transform="rotate(60,215,42)"/>
           <ellipse cx="215" cy="38" rx="2" ry="3.5" fill="#14b8a6" opacity="0.3"  transform="rotate(-60,215,42)"/>
@@ -137,7 +148,6 @@ export function renderZen() {
         </div>
 
         <div id="breath-container" class="flex flex-col items-center">
-          <!-- Circle visualizer -->
           <div class="relative flex items-center justify-center mb-6">
             <div id="breath-circle"
               class="w-40 h-40 rounded-full border-4 border-teal-500/30 flex items-center justify-center
@@ -149,7 +159,6 @@ export function renderZen() {
                 <p class="text-slate-600 text-xs mt-1">seconds</p>
               </div>
             </div>
-            <!-- Outer pulse ring -->
             <div id="breath-ring" class="absolute w-44 h-44 rounded-full border-2 border-teal-500/10 transition-all duration-[4000ms] ease-in-out pointer-events-none"></div>
           </div>
 
@@ -168,7 +177,6 @@ export function renderZen() {
             </button>
           </div>
 
-          <!-- Phase indicator dots -->
           <div class="flex gap-3 mt-5">
             ${BREATH_PHASES.map((p, i) => `
               <div class="flex flex-col items-center gap-1">
@@ -190,24 +198,70 @@ export function renderZen() {
           </span>
         </h3>
 
-        <!-- Preset buttons -->
-        <div class="flex gap-2 mb-5">
+        <!-- Duration presets -->
+        <div class="flex gap-2 mb-4">
           ${MED_PRESETS.map((p, i) => `
-            <button class="med-preset flex-1 text-xs py-2 rounded-lg transition-colors font-medium
-                           ${i === 1 ? 'bg-purple-500/25 text-purple-400 border border-purple-500/30' : 'bg-slate-700 text-slate-400 border border-slate-600 hover:border-purple-500/30'}"
+            <button class="med-preset flex-1 text-xs py-2 rounded-lg transition-colors font-medium border
+                           ${i === 1 ? 'bg-purple-500/25 text-purple-400 border-purple-500/30' : 'bg-slate-700 text-slate-400 border-slate-600 hover:border-purple-500/30'}"
               data-seconds="${p.seconds}">${p.label}</button>
           `).join('')}
+        </div>
+
+        <!-- Ambient sound selector -->
+        <div class="mb-3">
+          <p class="text-slate-500 text-xs uppercase tracking-wider mb-2 flex items-center gap-1.5">
+            <i class="fa-solid fa-headphones"></i> Ambient Sound
+          </p>
+          <div class="grid grid-cols-4 gap-1.5">
+            <button class="med-sound-btn flex flex-col items-center gap-1 py-2.5 rounded-xl text-xs font-medium border transition-all
+                           bg-slate-700/40 border-slate-600/50 text-slate-400 hover:border-purple-500/30" data-mode="rain">
+              <i class="fa-solid fa-cloud-rain text-base"></i>
+              <span>Rain</span>
+            </button>
+            <button class="med-sound-btn flex flex-col items-center gap-1 py-2.5 rounded-xl text-xs font-medium border transition-all
+                           bg-purple-500/25 border-purple-500/40 text-purple-300" data-mode="drone">
+              <i class="fa-solid fa-music text-base"></i>
+              <span>Drone</span>
+            </button>
+            <button class="med-sound-btn flex flex-col items-center gap-1 py-2.5 rounded-xl text-xs font-medium border transition-all
+                           bg-slate-700/40 border-slate-600/50 text-slate-400 hover:border-purple-500/30" data-mode="om">
+              <i class="fa-solid fa-om text-base"></i>
+              <span>OM</span>
+            </button>
+            <button class="med-sound-btn flex flex-col items-center gap-1 py-2.5 rounded-xl text-xs font-medium border transition-all
+                           bg-slate-700/40 border-slate-600/50 text-slate-400 hover:border-purple-500/30" data-mode="off">
+              <i class="fa-solid fa-volume-xmark text-base"></i>
+              <span>Off</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Volume control -->
+        <div class="flex items-center gap-3 mb-5">
+          <i class="fa-solid fa-volume-low text-slate-600 text-xs flex-shrink-0"></i>
+          <input type="range" id="med-volume" min="0" max="1" step="0.05" value="0.45"
+            class="flex-1 cursor-pointer accent-purple-500"
+            style="height: 4px; border-radius: 2px; background: #334155;">
+          <i class="fa-solid fa-volume-high text-slate-600 text-xs flex-shrink-0"></i>
         </div>
 
         <!-- Breathing circle + countdown -->
         <div class="flex flex-col items-center mb-5">
           <div class="relative flex items-center justify-center">
+            <!-- Outer ambient glow ring (pulses with breath) -->
+            <div id="med-glow-ring"
+              class="absolute rounded-full pointer-events-none transition-all ease-in-out"
+              style="width: 200px; height: 200px;
+                     background: radial-gradient(circle, rgba(168,85,247,0.08) 0%, transparent 70%);
+                     transition-duration: 4000ms;"></div>
+
             <div id="med-circle"
-              class="w-36 h-36 rounded-full border-4 border-purple-500/30 flex items-center justify-center
+              class="relative z-10 w-36 h-36 rounded-full border-4 border-purple-500/30 flex items-center justify-center
                      transition-all ease-in-out"
               style="background: radial-gradient(circle, rgba(168,85,247,0.12) 0%, transparent 70%);
                      transition-duration: 4000ms;">
               <div class="text-center">
+                <p id="med-breath-word" class="text-purple-400/70 text-xs font-medium tracking-widest uppercase mb-1"></p>
                 <p id="med-time" class="text-purple-300 text-3xl font-mono font-bold tabular-nums">5:00</p>
                 <p class="text-slate-500 text-xs mt-1">remaining</p>
               </div>
@@ -217,12 +271,18 @@ export function renderZen() {
               style="transition: all 4000ms ease-in-out;"></div>
           </div>
           <p id="med-instruction" class="text-slate-400 text-sm text-center mt-4 max-w-xs leading-relaxed">
-            Select duration, then press Start.
+            Select duration and sound, then press Start.
           </p>
+
+          <!-- Interval bell indicator -->
+          <div id="med-bell-indicator" class="hidden mt-2 flex items-center gap-1.5 text-purple-500/60 text-xs">
+            <i class="fa-solid fa-bell text-xs"></i>
+            <span>Gentle bell every minute</span>
+          </div>
         </div>
 
         <!-- Progress bar -->
-        <div class="w-full bg-slate-700/60 rounded-full h-1.5 mb-5 overflow-hidden">
+        <div class="relative w-full bg-slate-700/60 rounded-full h-1.5 mb-5 overflow-hidden">
           <div id="med-progress-bar"
             class="h-1.5 rounded-full bg-gradient-to-r from-purple-600 to-purple-400 transition-all duration-1000"
             style="width: 0%"></div>
@@ -260,7 +320,6 @@ export function renderZen() {
           <p class="text-slate-400 text-sm mt-2" id="pomo-status">Ready to focus</p>
         </div>
 
-        <!-- Progress ring -->
         <div class="flex justify-center mb-6">
           <svg width="120" height="120" class="-rotate-90">
             <circle cx="60" cy="60" r="54" fill="none" stroke="#1e293b" stroke-width="8"/>
@@ -357,6 +416,19 @@ export function initZen(userId = null) {
   initPomodoro();
 }
 
+// ─── Cleanup (called from main.js when navigating away) ───────
+export function destroyZen() {
+  _teardownAudio();
+  clearTimeout(breathTimer);
+  clearInterval(medInterval);
+  clearInterval(pomodoroInterval);
+  breathTimer       = null;
+  medInterval       = null;
+  pomodoroInterval  = null;
+  medRunning        = false;
+  pomodoroRunning   = false;
+}
+
 // ─── Breathing ──────────────────────────────────────────────
 
 function initBreathing() {
@@ -378,13 +450,8 @@ function initBreathing() {
     stopBreathing();
   });
 
-  fsBtn?.addEventListener('click', () => {
-    overlay.classList.remove('hidden');
-  });
-
-  fsClose?.addEventListener('click', () => {
-    overlay.classList.add('hidden');
-  });
+  fsBtn?.addEventListener('click', () => overlay.classList.remove('hidden'));
+  fsClose?.addEventListener('click', () => overlay.classList.add('hidden'));
 }
 
 function startBreathing() {
@@ -394,8 +461,8 @@ function startBreathing() {
 
 function stopBreathing() {
   clearTimeout(breathTimer);
-  breathTimer  = null;
-  breathPhase  = 0;
+  breathTimer = null;
+  breathPhase = 0;
 
   const label = document.getElementById('breath-phase-label');
   const count = document.getElementById('breath-count');
@@ -411,12 +478,11 @@ function stopBreathing() {
 }
 
 function runBreathPhase() {
-  const phase = breathPhase % 4;
+  const phase     = breathPhase % 4;
   const phaseName = BREATH_PHASES[phase];
 
   updateBreathUI(phaseName, 4, phase);
 
-  // Count down 4 → 1
   let count = 4;
   const tick = setInterval(() => {
     count--;
@@ -453,23 +519,21 @@ function updateBreathUI(phaseName, seconds, phaseIndex) {
   };
   if (instr) instr.textContent = instructions[phaseName] || 'Hold gently.';
 
-  // Circle animation
   const isExpand = phaseName === 'Inhale';
-  const isShink  = phaseName === 'Exhale';
+  const isShrink = phaseName === 'Exhale';
 
   if (circle) {
-    circle.style.transform = isExpand ? 'scale(1.35)' : isShink ? 'scale(0.8)' : '';
-    circle.style.borderColor = phaseName === 'Exhale' ? 'rgba(20,184,166,0.6)' : 'rgba(20,184,166,0.3)';
+    circle.style.transform    = isExpand ? 'scale(1.35)' : isShrink ? 'scale(0.8)' : '';
+    circle.style.borderColor  = phaseName === 'Exhale' ? 'rgba(20,184,166,0.6)' : 'rgba(20,184,166,0.3)';
   }
   if (ring) {
-    ring.style.transform  = isExpand ? 'scale(1.5)' : isShink ? 'scale(0.9)' : '';
-    ring.style.opacity    = isExpand ? '0.6' : '0.15';
+    ring.style.transform = isExpand ? 'scale(1.5)' : isShrink ? 'scale(0.9)' : '';
+    ring.style.opacity   = isExpand ? '0.6' : '0.15';
   }
   if (fsCirc) {
-    fsCirc.style.transform = isExpand ? 'scale(1.3)' : isShink ? 'scale(0.75)' : '';
+    fsCirc.style.transform = isExpand ? 'scale(1.3)' : isShrink ? 'scale(0.75)' : '';
   }
 
-  // Update phase dots
   document.querySelectorAll('.breath-dot').forEach((d, i) => {
     d.className = i === phaseIndex
       ? 'breath-dot w-2 h-2 rounded-full bg-teal-400 transition-colors'
@@ -493,11 +557,11 @@ function initMeditation(userId) {
   const badge      = document.getElementById('med-status-badge');
   const presets    = document.querySelectorAll('.med-preset');
 
-  // Preset selection
+  // Duration presets
   presets.forEach((btn) => {
     btn.addEventListener('click', () => {
       if (medRunning) return;
-      const secs = parseInt(btn.dataset.seconds, 10);
+      const secs   = parseInt(btn.dataset.seconds, 10);
       medTarget    = secs;
       medRemaining = secs;
       _updateMedDisplay();
@@ -505,8 +569,7 @@ function initMeditation(userId) {
       presets.forEach((b) => {
         b.className = b.className
           .replace('bg-purple-500/25 text-purple-400 border-purple-500/30', '')
-          .replace('bg-slate-700 text-slate-400 border-slate-600', '')
-          + ' bg-slate-700 text-slate-400 border border-slate-600';
+          + ' bg-slate-700 text-slate-400 border-slate-600';
       });
       btn.className = btn.className
         .replace('bg-slate-700 text-slate-400 border-slate-600', '')
@@ -515,26 +578,60 @@ function initMeditation(userId) {
     });
   });
 
+  // Sound mode buttons
+  document.querySelectorAll('.med-sound-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      _ambientMode = btn.dataset.mode;
+
+      // Update button styles
+      document.querySelectorAll('.med-sound-btn').forEach((b) => {
+        b.className = b.className
+          .replace('bg-purple-500/25 border-purple-500/40 text-purple-300', '')
+          + ' bg-slate-700/40 border-slate-600/50 text-slate-400';
+      });
+      btn.className = btn.className
+        .replace('bg-slate-700/40 border-slate-600/50 text-slate-400', '')
+        + ' bg-purple-500/25 border-purple-500/40 text-purple-300';
+
+      // If session is running, switch sound live
+      if (medRunning) {
+        const vol = parseFloat(document.getElementById('med-volume')?.value ?? '0.45');
+        _startAmbient(_ambientMode, vol);
+      }
+    });
+  });
+
+  // Volume slider
+  document.getElementById('med-volume')?.addEventListener('input', (e) => {
+    _setAmbientVolume(parseFloat(e.target.value));
+  });
+
+  // Start
   startBtn?.addEventListener('click', () => {
     if (medRunning) return;
     medRunning = true;
     startBtn.classList.add('hidden');
     stopBtn?.classList.remove('hidden');
-    if (badge)   { badge.textContent = 'Running'; badge.className = 'ml-2 text-xs px-2 py-0.5 rounded-full bg-purple-500/30 text-purple-300 font-medium'; }
+    if (badge)      { badge.textContent = 'Running'; badge.className = 'ml-2 text-xs px-2 py-0.5 rounded-full bg-purple-500/30 text-purple-300 font-medium'; }
     if (completeEl) completeEl.classList.add('hidden');
-    _playMedBell();
-    _updateMedInstruction('Breathe gently. Let thoughts pass without holding.');
+    document.getElementById('med-bell-indicator')?.classList.remove('hidden');
+
+    const vol = parseFloat(document.getElementById('med-volume')?.value ?? '0.45');
+    _playStartBell();
+    _startAmbient(_ambientMode, vol);
     _startMedBreath();
+    _scheduleIntervalBells(medRemaining);
     _runMedTimer(userId);
   });
 
+  // Stop
   stopBtn?.addEventListener('click', () => {
     _stopMeditation();
     _updateMedInstruction('Session paused. Press Start to continue.');
+    document.getElementById('med-bell-indicator')?.classList.add('hidden');
     if (badge) { badge.textContent = 'Stopped'; badge.className = 'ml-2 text-xs px-2 py-0.5 rounded-full bg-slate-600 text-slate-400 font-medium'; }
   });
 
-  // Initialize display
   _updateMedDisplay();
 }
 
@@ -550,8 +647,9 @@ function _runMedTimer(userId) {
 
     if (medRemaining <= 0) {
       _stopMeditation();
-      _playMedBell(true);
+      _playEndBells();
       _onMedComplete(userId, true);
+      document.getElementById('med-bell-indicator')?.classList.add('hidden');
     }
   }, 1000);
 }
@@ -560,9 +658,11 @@ function _stopMeditation() {
   medRunning = false;
   clearInterval(medInterval);
   medInterval = null;
+  _cancelIntervalBells();
+  _teardownAudio();
+  _stopMedBreath();
   document.getElementById('med-start')?.classList.remove('hidden');
   document.getElementById('med-stop')?.classList.add('hidden');
-  _stopMedBreath();
 }
 
 function _onMedComplete(userId, autoMark) {
@@ -573,7 +673,6 @@ function _onMedComplete(userId, autoMark) {
   _updateMedInstruction('Well done. Sit with this stillness for a moment.');
 
   if (autoMark && userId) {
-    // Auto-mark meditation habit with ±10s tolerance (remaining is 0 here)
     fetchOrCreateTodayHabits(userId).then((row) => {
       if (row && !row.meditation) {
         return updateHabit(row.id, 'meditation', true).then(() => addXp(userId, 10));
@@ -599,78 +698,321 @@ function _updateMedInstruction(text) {
   if (el) el.textContent = text;
 }
 
-// Slow breathing animation for meditation (4s inhale, 4s exhale)
+// ─── Breathing animation for meditation ───────────────────────
 let medBreathTimer = null;
-let medBreathPhase = 0; // 0=expand, 1=contract
+let medBreathPhase = 0; // 0 = expand / inhale, 1 = contract / exhale
 
 function _startMedBreath() {
   _stopMedBreath();
   medBreathPhase = 0;
+  _promptIndex   = 0;
   _runMedBreathCycle();
 }
 
 function _stopMedBreath() {
   clearTimeout(medBreathTimer);
   medBreathTimer = null;
-  const circle = document.getElementById('med-circle');
-  const ring   = document.getElementById('med-ring');
+  const circle  = document.getElementById('med-circle');
+  const ring    = document.getElementById('med-ring');
+  const glow    = document.getElementById('med-glow-ring');
+  const word    = document.getElementById('med-breath-word');
   if (circle) circle.style.transform = '';
-  if (ring)   ring.style.transform = '';
+  if (ring)   ring.style.transform   = '';
+  if (glow)   glow.style.transform   = '';
+  if (word)   word.textContent        = '';
 }
 
 function _runMedBreathCycle() {
   const circle = document.getElementById('med-circle');
   const ring   = document.getElementById('med-ring');
+  const glow   = document.getElementById('med-glow-ring');
+  const word   = document.getElementById('med-breath-word');
   if (!circle) return;
 
-  if (medBreathPhase === 0) {
-    // Inhale — expand
-    circle.style.transform = 'scale(1.25)';
-    if (ring) ring.style.transform = 'scale(1.45)';
-    _updateMedInstruction('Breathe in slowly through your nose...');
+  const isInhale = medBreathPhase === 0;
+
+  // Visual
+  if (isInhale) {
+    circle.style.transform = 'scale(1.22)';
+    circle.style.borderColor = 'rgba(168,85,247,0.55)';
+    if (ring) ring.style.transform = 'scale(1.42)';
+    if (glow) glow.style.transform = 'scale(1.4)';
+    if (word) word.textContent = 'INHALE';
+
+    // Rotating text prompts
+    _updateMedInstruction(INHALE_PROMPTS[_promptIndex % INHALE_PROMPTS.length]);
   } else {
-    // Exhale — contract
-    circle.style.transform = 'scale(0.85)';
+    circle.style.transform = 'scale(0.88)';
+    circle.style.borderColor = 'rgba(168,85,247,0.25)';
     if (ring) ring.style.transform = 'scale(0.95)';
-    _updateMedInstruction('Exhale gently through your mouth...');
+    if (glow) glow.style.transform = 'scale(0.9)';
+    if (word) word.textContent = 'EXHALE';
+
+    _updateMedInstruction(EXHALE_PROMPTS[_promptIndex % EXHALE_PROMPTS.length]);
+    _promptIndex++;
   }
 
-  medBreathPhase = medBreathPhase === 0 ? 1 : 0;
+  // Sync audio envelope to breath
+  _syncBreathToAudio(isInhale);
 
+  medBreathPhase = isInhale ? 1 : 0;
   if (medRunning) {
     medBreathTimer = setTimeout(_runMedBreathCycle, 4000);
   }
 }
 
-// Web Audio API — soft meditation bell
-function _playMedBell(isEnd = false) {
+// ─── Ambient Audio Engine ─────────────────────────────────────
+let _audioCtx        = null;
+let _ambientGainNode = null;
+let _breathEnvNode   = null;
+let _activeAudioNodes = [];
+let _intervalBellIds  = [];
+
+function _createOrResumeCtx() {
+  if (!_audioCtx || _audioCtx.state === 'closed') {
+    _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (_audioCtx.state === 'suspended') _audioCtx.resume();
+  return _audioCtx;
+}
+
+function _teardownAudio() {
+  _cancelIntervalBells();
+  _activeAudioNodes.forEach((node) => {
+    try { if (node.stop) node.stop(0); } catch (_) {}
+    try { node.disconnect(); } catch (_) {}
+  });
+  _activeAudioNodes = [];
+  _ambientGainNode  = null;
+  _breathEnvNode    = null;
+}
+
+function _startAmbient(mode, volume = 0.45) {
+  _teardownAudio();
+  if (mode === 'off') return;
+
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = _createOrResumeCtx();
 
-    const playTone = (freq, start, duration, gain = 0.3) => {
-      const osc  = ctx.createOscillator();
-      const amp  = ctx.createGain();
-      osc.connect(amp);
-      amp.connect(ctx.destination);
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, ctx.currentTime + start);
-      amp.gain.setValueAtTime(0, ctx.currentTime + start);
-      amp.gain.linearRampToValueAtTime(gain, ctx.currentTime + start + 0.05);
-      amp.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + duration);
-      osc.start(ctx.currentTime + start);
-      osc.stop(ctx.currentTime + start + duration);
-    };
+    // Master output gain (volume slider controls this)
+    _ambientGainNode = ctx.createGain();
+    _ambientGainNode.gain.value = volume;
+    _ambientGainNode.connect(ctx.destination);
 
-    if (isEnd) {
-      // Three gentle bells at end
-      playTone(528, 0,    2.5, 0.35);
-      playTone(396, 0.8,  2.0, 0.25);
-      playTone(528, 1.6,  2.5, 0.3);
-    } else {
-      // Single soft bell at start
-      playTone(396, 0, 2.0, 0.25);
+    // Breath envelope gain — modulated by inhale/exhale
+    _breathEnvNode = ctx.createGain();
+    _breathEnvNode.gain.value = 1.0;
+    _breathEnvNode.connect(_ambientGainNode);
+
+    _activeAudioNodes.push(_ambientGainNode, _breathEnvNode);
+
+    if (mode === 'drone') _buildDrone(ctx, _breathEnvNode);
+    else if (mode === 'rain') _buildRain(ctx, _breathEnvNode);
+    else if (mode === 'om') _buildOm(ctx, _breathEnvNode);
+  } catch (err) {
+    console.warn('[Zen Audio] Ambient start failed:', err);
+  }
+}
+
+function _setAmbientVolume(vol) {
+  if (_ambientGainNode && _audioCtx) {
+    const now = _audioCtx.currentTime;
+    _ambientGainNode.gain.cancelScheduledValues(now);
+    _ambientGainNode.gain.linearRampToValueAtTime(Math.max(0, vol), now + 0.15);
+  }
+}
+
+function _syncBreathToAudio(isInhale) {
+  if (!_breathEnvNode || !_audioCtx) return;
+  const now = _audioCtx.currentTime;
+  _breathEnvNode.gain.cancelScheduledValues(now);
+  _breathEnvNode.gain.setValueAtTime(_breathEnvNode.gain.value, now);
+  // Swell to 1.35 on inhale, soften to 0.68 on exhale — creates a breathing feel
+  _breathEnvNode.gain.linearRampToValueAtTime(isInhale ? 1.35 : 0.68, now + 3.8);
+}
+
+// ── Drone — Solfeggio 174Hz + warm harmonics ──────────────────
+function _buildDrone(ctx, dest) {
+  const layers = [
+    { freq:  87.0, detune:  0, gain: 0.20 }, // sub-octave warmth
+    { freq: 174.0, detune:  0, gain: 0.38 }, // fundamental (174Hz Solfeggio)
+    { freq: 174.0, detune:  9, gain: 0.25 }, // slightly detuned twin for chorus
+    { freq: 261.0, detune: -4, gain: 0.16 }, // perfect fifth
+    { freq: 348.0, detune:  3, gain: 0.09 }, // octave
+  ];
+
+  layers.forEach(({ freq, detune, gain: g }) => {
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type            = 'sine';
+    osc.frequency.value = freq;
+    osc.detune.value    = detune;
+    gain.gain.value     = g;
+    osc.connect(gain);
+    gain.connect(dest);
+    osc.start();
+    _activeAudioNodes.push(osc, gain);
+  });
+
+  // Very slow LFO tremolo — makes it feel alive
+  const lfo     = ctx.createOscillator();
+  const lfoGain = ctx.createGain();
+  lfo.type            = 'sine';
+  lfo.frequency.value = 0.08; // ~12 second cycle
+  lfoGain.gain.value  = 0.06;
+  lfo.connect(lfoGain);
+  lfoGain.connect(dest.gain);
+  lfo.start();
+  _activeAudioNodes.push(lfo, lfoGain);
+}
+
+// ── Rain — brown noise with gust LFO ──────────────────────────
+function _buildRain(ctx, dest) {
+  // Brown noise — warmer and deeper than white
+  const bufSize = ctx.sampleRate * 5;
+  const buffer  = ctx.createBuffer(2, bufSize, ctx.sampleRate);
+  for (let ch = 0; ch < 2; ch++) {
+    const data = buffer.getChannelData(ch);
+    let lastOut = 0;
+    for (let i = 0; i < bufSize; i++) {
+      const white = Math.random() * 2 - 1;
+      lastOut  = (lastOut + (0.02 * white)) / 1.02;
+      data[i]  = lastOut * 4.0;
     }
-  } catch (_) { /* AudioContext not available */ }
+  }
+
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+  source.loop   = true;
+
+  const hiPass  = ctx.createBiquadFilter();
+  hiPass.type   = 'highpass';
+  hiPass.frequency.value = 350;
+
+  const loPass  = ctx.createBiquadFilter();
+  loPass.type   = 'lowpass';
+  loPass.frequency.value = 5000;
+  loPass.Q.value = 0.5;
+
+  // Gust LFO — slow 22-second rain intensity variation
+  const lfo     = ctx.createOscillator();
+  const lfoGain = ctx.createGain();
+  const modGain = ctx.createGain();
+  lfo.type            = 'sine';
+  lfo.frequency.value = 0.045;
+  lfoGain.gain.value  = 0.18;
+  modGain.gain.value  = 0.82;
+  lfo.connect(lfoGain);
+  lfoGain.connect(modGain.gain);
+
+  source.connect(hiPass);
+  hiPass.connect(loPass);
+  loPass.connect(modGain);
+  modGain.connect(dest);
+  source.start();
+  lfo.start();
+
+  _activeAudioNodes.push(source, hiPass, loPass, lfo, lfoGain, modGain);
+}
+
+// ── OM — 136Hz sacred drone with vibrato & rich harmonics ─────
+function _buildOm(ctx, dest) {
+  const fundamental = 136; // approx. frequency of OM/AUM
+
+  // Slow vibrato for organic, human feel
+  const vibrato     = ctx.createOscillator();
+  const vibratoGain = ctx.createGain();
+  vibrato.type            = 'sine';
+  vibrato.frequency.value = 5.5;
+  vibratoGain.gain.value  = 5; // ±5 cents
+  vibrato.connect(vibratoGain);
+  vibrato.start();
+  _activeAudioNodes.push(vibrato, vibratoGain);
+
+  const harmonics = [
+    { freq: fundamental / 2,  gain: 0.18 }, // sub-octave
+    { freq: fundamental,      gain: 0.40 },
+    { freq: fundamental * 2,  gain: 0.20 },
+    { freq: fundamental * 3,  gain: 0.11 },
+    { freq: fundamental * 4,  gain: 0.06 },
+    { freq: fundamental * 5,  gain: 0.03 },
+  ];
+
+  harmonics.forEach(({ freq, gain: g }) => {
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type            = 'sine';
+    osc.frequency.value = freq;
+    vibratoGain.connect(osc.detune);
+    gain.gain.value = g;
+    osc.connect(gain);
+    gain.connect(dest);
+    osc.start();
+    _activeAudioNodes.push(osc, gain);
+  });
+
+  // Slow swell LFO — breathing OM quality
+  const swellLfo  = ctx.createOscillator();
+  const swellGain = ctx.createGain();
+  swellLfo.type            = 'sine';
+  swellLfo.frequency.value = 0.07; // ~14 second swell
+  swellGain.gain.value     = 0.12;
+  swellLfo.connect(swellGain);
+  swellGain.connect(dest.gain);
+  swellLfo.start();
+  _activeAudioNodes.push(swellLfo, swellGain);
+}
+
+// ─── Bell system ──────────────────────────────────────────────
+
+// Gentle single bell played at session start
+function _playStartBell() {
+  _playBellTone(396, 0, 2.2, 0.28);
+}
+
+// Three layered bells at session end
+function _playEndBells() {
+  _playBellTone(528, 0.0, 3.0, 0.38);
+  _playBellTone(396, 0.9, 2.5, 0.28);
+  _playBellTone(528, 1.8, 3.0, 0.32);
+}
+
+// Softer single bell played at each 60s interval
+function _playIntervalBell() {
+  _playBellTone(440, 0, 2.0, 0.18);
+}
+
+function _playBellTone(freq, delaySeconds, duration, gain) {
+  try {
+    const ctx = _createOrResumeCtx();
+    const osc = ctx.createOscillator();
+    const amp = ctx.createGain();
+    osc.connect(amp);
+    amp.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, ctx.currentTime + delaySeconds);
+    amp.gain.setValueAtTime(0, ctx.currentTime + delaySeconds);
+    amp.gain.linearRampToValueAtTime(gain, ctx.currentTime + delaySeconds + 0.06);
+    amp.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delaySeconds + duration);
+    osc.start(ctx.currentTime + delaySeconds);
+    osc.stop(ctx.currentTime + delaySeconds + duration);
+  } catch (_) {}
+}
+
+// Schedule a gentle bell every 60s throughout the session
+function _scheduleIntervalBells(totalSeconds) {
+  _cancelIntervalBells();
+  for (let elapsed = 60; elapsed < totalSeconds; elapsed += 60) {
+    const id = setTimeout(() => {
+      if (medRunning) _playIntervalBell();
+    }, elapsed * 1000);
+    _intervalBellIds.push(id);
+  }
+}
+
+function _cancelIntervalBells() {
+  _intervalBellIds.forEach(clearTimeout);
+  _intervalBellIds = [];
 }
 
 // ─── Pomodoro ────────────────────────────────────────────────
@@ -682,12 +1024,12 @@ const POMO_PRESETS = {
 };
 
 function initPomodoro() {
-  const startBtn  = document.getElementById('pomo-start');
-  const pauseBtn  = document.getElementById('pomo-pause');
-  const resetBtn  = document.getElementById('pomo-reset');
-  const workBtn   = document.getElementById('pomo-work');
-  const shortBtn  = document.getElementById('pomo-short');
-  const longBtn   = document.getElementById('pomo-long');
+  const startBtn = document.getElementById('pomo-start');
+  const pauseBtn = document.getElementById('pomo-pause');
+  const resetBtn = document.getElementById('pomo-reset');
+  const workBtn  = document.getElementById('pomo-work');
+  const shortBtn = document.getElementById('pomo-short');
+  const longBtn  = document.getElementById('pomo-long');
 
   startBtn?.addEventListener('click', () => {
     pomodoroRunning = true;
@@ -718,9 +1060,9 @@ function initPomodoro() {
   });
 
   [
-    { btn: workBtn,  preset: 'work',  mode: 'work',  label: 'Focus',      color: 'red'   },
+    { btn: workBtn,  preset: 'work',  mode: 'work',  label: 'Focus',       color: 'red' },
     { btn: shortBtn, preset: 'short', mode: 'break', label: 'Short Break', color: 'green' },
-    { btn: longBtn,  preset: 'long',  mode: 'break', label: 'Long Break',  color: 'blue'  },
+    { btn: longBtn,  preset: 'long',  mode: 'break', label: 'Long Break',  color: 'blue' },
   ].forEach(({ btn, preset, mode, label }) => {
     btn?.addEventListener('click', () => {
       clearInterval(pomodoroInterval);
@@ -748,16 +1090,13 @@ function initPomodoro() {
 
 function runPomodoro() {
   const totalSeconds = pomodoroMode === 'work' ? POMO_PRESETS.work : pomodoroSeconds;
-
   clearInterval(pomodoroInterval);
+
   pomodoroInterval = setInterval(() => {
     if (!pomodoroRunning) return;
-
     pomodoroSeconds--;
     updatePomoDisplay();
-
-    const elapsed = totalSeconds - pomodoroSeconds;
-    updatePomoRing(elapsed / totalSeconds);
+    updatePomoRing((totalSeconds - pomodoroSeconds) / totalSeconds);
 
     if (pomodoroSeconds <= 0) {
       clearInterval(pomodoroInterval);
@@ -781,7 +1120,7 @@ function updatePomoRing(fraction) {
 }
 
 function onPomodoroComplete() {
-  const isWork = pomodoroMode === 'work';
+  const isWork    = pomodoroMode === 'work';
   pomodoroMode    = isWork ? 'break' : 'work';
   pomodoroSeconds = isWork ? POMO_PRESETS.short : POMO_PRESETS.work;
 
@@ -796,7 +1135,6 @@ function onPomodoroComplete() {
   updatePomoDisplay();
   updatePomoRing(0);
 
-  // Browser notification if permitted
   if (Notification.permission === 'granted') {
     new Notification('Pomodoro Complete!', {
       body: isWork ? 'Time for a 5-minute break.' : 'Break over — back to focus!',

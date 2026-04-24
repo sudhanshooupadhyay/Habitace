@@ -130,6 +130,39 @@ export async function saveWorkoutLog(userId, payload) {
   return data;
 }
 
+export async function fetchWorkoutLogs(userId, limit = 20) {
+  const { data, error } = await supabase
+    .from('workout_logs')
+    .select('*')
+    .eq('user_id', userId)
+    .order('date', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return data || [];
+}
+
+export async function saveUserProfile(userId, {
+  username, vices, interests, has_anxiety,
+  vice_quit_date, vice_daily_amount, vice_pack_size, vice_pack_cost,
+} = {}) {
+  const update = {};
+  if (username           !== undefined) update.username           = username;
+  if (vices              !== undefined) update.vices              = vices;
+  if (interests          !== undefined) update.interests          = interests;
+  if (has_anxiety        !== undefined) update.has_anxiety        = has_anxiety;
+  if (vice_quit_date     !== undefined) update.vice_quit_date     = vice_quit_date;
+  if (vice_daily_amount  !== undefined) update.vice_daily_amount  = vice_daily_amount;
+  if (vice_pack_size     !== undefined) update.vice_pack_size     = vice_pack_size;
+  if (vice_pack_cost     !== undefined) update.vice_pack_cost     = vice_pack_cost;
+
+  if (Object.keys(update).length === 0) return;
+  const { error } = await supabase
+    .from('users')
+    .update(update)
+    .eq('id', userId);
+  if (error) throw error;
+}
+
 // ─── Anxiety vault helpers ───────────────────────────────────
 
 export async function saveAnxietyEntry(userId, payload) {

@@ -1,12 +1,13 @@
 import {
   fetchOrCreateTodayHabits, updateHabit, addXp, fetchUser,
   fetchTodaySleep, fetchFocusAreaData, saveWeightLog, saveWorkoutLog,
-  saveTodaySleepManual,
+  saveTodaySleepManual, fetchWorkoutLogs,
 } from '../lib/supabase.js';
 import { getRandomQuote } from '../lib/quotes.js';
 import {
   calcLevel, getRankTitle, calcBMI, bmiCategory, bmiProgressToTarget, generateInsights,
 } from '../lib/progressionEngine.js';
+import { renderViceTracker, initViceTracker, destroyViceTracker } from './viceTracker.js';
 
 // ─── Habit definitions ────────────────────────────────────────
 const BASE_HABITS = [
@@ -17,12 +18,13 @@ const BASE_HABITS = [
 ];
 
 // Vice-based habits (only shown when user selected the vice during onboarding)
+// All vices share the smoke_free DB column — the label/icon/color adapts per vice.
 const VICE_HABITS = {
-  smoking:      { key: 'smoke_free',    label: 'Smoke Free',      icon: 'fa-wind',          color: 'sky'    },
-  alcohol:      { key: 'alcohol_free',  label: 'Alcohol Free',    icon: 'fa-wine-bottle',    color: 'rose'   },
-  gambling:     { key: 'no_gambling',   label: 'No Gambling',     icon: 'fa-dice',           color: 'orange' },
-  junk_food:    { key: 'no_junk',       label: 'No Junk Food',    icon: 'fa-burger',         color: 'amber'  },
-  social_media: { key: 'screen_limit',  label: 'Screen Limit',    icon: 'fa-mobile-screen',  color: 'indigo' },
+  smoking:      { key: 'smoke_free', label: 'Smoke Free',    icon: 'fa-wind',              color: 'sky'    },
+  alcohol:      { key: 'smoke_free', label: 'Alcohol Free',  icon: 'fa-wine-bottle',       color: 'rose'   },
+  gambling:     { key: 'smoke_free', label: 'No Gambling',   icon: 'fa-dice',              color: 'orange' },
+  junk_food:    { key: 'smoke_free', label: 'No Junk Food',  icon: 'fa-burger',            color: 'amber'  },
+  social_media: { key: 'smoke_free', label: 'Screen Limit',  icon: 'fa-mobile-screen',     color: 'indigo' },
 };
 
 // Returns the active habit list based on user's onboarding selections
@@ -323,6 +325,9 @@ export function renderDashboard(userData, authUser = null) {
         </div>
       </div>
 
+      <!-- ── Vice Quit Tracker ─────────────────────────────── -->
+      ${(userData?.vices || []).length > 0 ? renderViceTracker(userData) : ''}
+
       <!-- ── Workout Log ────────────────────────────────────── -->
       <div class="bg-navy-600 rounded-2xl border border-slate-700/50 p-5">
         <h3 class="text-white font-semibold flex items-center gap-2 mb-4">
@@ -422,12 +427,35 @@ export function renderDashboard(userData, authUser = null) {
         <div id="weight-result" class="hidden mt-3 p-3 rounded-xl bg-sky-500/10 border border-sky-500/20 text-center text-sm text-sky-300"></div>
       </div>
 
+      <!-- ── Workout History ───────────────────────────────── -->
+      <div class="bg-navy-600 rounded-2xl border border-slate-700/50 p-5">
+        <div class="flex items-center justify-between mb-1">
+          <h3 class="text-white font-semibold flex items-center gap-2">
+            <i class="fa-solid fa-clock-rotate-left text-indigo-400"></i>
+            Workout History
+          </h3>
+          <button id="load-workout-logs-btn"
+            class="text-indigo-400 hover:text-indigo-300 text-xs font-semibold transition-colors flex items-center gap-1.5">
+            <i class="fa-solid fa-chevron-down text-xs"></i>View Logs
+          </button>
+        </div>
+        <p class="text-slate-500 text-xs mb-3">Your past workout entries — everything you've logged.</p>
+        <div id="workout-history-container" class="hidden space-y-3">
+          <div class="flex items-center justify-center py-4">
+            <i class="fa-solid fa-circle-notch fa-spin text-indigo-400"></i>
+          </div>
+        </div>
+      </div>
+
     </div>
   `;
 }
 
 // ─── Init ─────────────────────────────────────────────────────
-export async function initDashboard(userId) {
+export async function initDashboard(userId, userData = null) {
+  // Clean up any running vice tracker interval from a previous render
+  destroyViceTracker();
+
   // Wire copy-quote button (synchronous — no await needed)
   document.getElementById('copy-quote-btn')?.addEventListener('click', (e) => {
     const btn    = e.currentTarget;
@@ -454,6 +482,12 @@ export async function initDashboard(userId) {
   if (habitRow) renderHabits(habitRow, userId);
   initWorkoutLog(userId);
   initWeightLog(userId);
+  initWorkoutHistory(userId);
+
+  // Start the real-time vice quit tracker if the user has a vice and has committed
+  if (userData?.vices?.length > 0) {
+    initViceTracker(userData);
+  }
 }
 
 // ─── Sleep widget — manual input ──────────────────────────────
@@ -1111,6 +1145,93 @@ function initWeightLog(userId) {
       saveBtn.textContent = 'Log';
     }
   });
+}
+
+// ─── Workout History ──────────────────────────────────────────
+function initWorkoutHistory(userId) {
+  const btn       = document.getElementById('load-workout-logs-btn');
+  const container = document.getElementById('workout-history-container');
+  if (!btn || !container) return;
+
+  let loaded = false;
+
+  btn.addEventListener('click', async () => {
+    const isHidden = container.classList.contains('hidden');
+    container.classList.toggle('hidden', !isHidden);
+
+    // Update button label + chevron direction
+    btn.innerHTML = isHidden
+      ? '<i class="fa-solid fa-chevron-up text-xs"></i>Hide Logs'
+      : '<i class="fa-solid fa-chevron-down text-xs"></i>View Logs';
+
+    if (isHidden && !loaded) {
+      loaded = true;
+      try {
+        const logs = await fetchWorkoutLogs(userId, 20);
+        renderWorkoutHistoryLogs(container, logs);
+      } catch (err) {
+        console.error('[WorkoutHistory] Failed:', err);
+        container.innerHTML = '<p class="text-red-400 text-sm text-center py-2">Failed to load logs.</p>';
+      }
+    }
+  });
+}
+
+function renderWorkoutHistoryLogs(container, logs) {
+  if (!logs.length) {
+    container.innerHTML = `
+      <div class="text-center py-4">
+        <i class="fa-solid fa-clipboard-list text-slate-700 text-2xl mb-2"></i>
+        <p class="text-slate-500 text-sm">No workout logs yet. Start logging above!</p>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = logs.map((log) => {
+    const dateStr  = new Date(log.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    const exercises = (log.routine || '').split('\n').filter(Boolean);
+
+    return `
+      <div class="bg-navy-700/50 rounded-xl border border-slate-700/40 overflow-hidden">
+        <div class="flex items-center justify-between px-4 py-2.5 border-b border-slate-700/40">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-calendar-day text-indigo-400 text-xs"></i>
+            <span class="text-white text-sm font-semibold">${escapeHtml(dateStr)}</span>
+          </div>
+          ${exercises.length ? `<span class="text-slate-500 text-xs">${exercises.length} exercise${exercises.length > 1 ? 's' : ''}</span>` : ''}
+        </div>
+        <div class="px-4 py-3 space-y-2.5">
+          ${exercises.length ? `
+            <div>
+              <p class="text-slate-400 text-xs font-medium uppercase tracking-wide mb-1.5">Exercises</p>
+              <div class="space-y-1">
+                ${exercises.map((ex) => `
+                  <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-dumbbell text-emerald-500/60 text-xs flex-shrink-0"></i>
+                    <span class="text-slate-300 text-xs">${escapeHtml(ex)}</span>
+                  </div>`).join('')}
+              </div>
+            </div>` : ''}
+          ${log.symptoms_faced ? `
+            <div>
+              <p class="text-slate-400 text-xs font-medium uppercase tracking-wide mb-1">Symptoms</p>
+              <p class="text-slate-400 text-xs leading-relaxed">${escapeHtml(log.symptoms_faced)}</p>
+            </div>` : ''}
+          ${log.fears_conquered ? `
+            <div>
+              <p class="text-slate-400 text-xs font-medium uppercase tracking-wide mb-1">Fears Pushed Through</p>
+              <p class="text-slate-400 text-xs leading-relaxed">${escapeHtml(log.fears_conquered)}</p>
+            </div>` : ''}
+          ${log.personal_notes ? `
+            <div>
+              <p class="text-slate-400 text-xs font-medium uppercase tracking-wide mb-1">Notes</p>
+              <p class="text-slate-400 text-xs leading-relaxed">${escapeHtml(log.personal_notes)}</p>
+            </div>` : ''}
+          ${!exercises.length && !log.symptoms_faced && !log.fears_conquered && !log.personal_notes
+            ? '<p class="text-slate-600 text-xs italic">No details recorded.</p>' : ''}
+        </div>
+      </div>`;
+  }).join('');
 }
 
 // ─── Util ─────────────────────────────────────────────────────

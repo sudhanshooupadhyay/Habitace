@@ -4,9 +4,10 @@ import { renderAuth, initAuth, renderPasswordReset, initPasswordReset } from './
 import { renderDashboard, initDashboard } from './components/dashboard.js';
 import { renderVault, initVault } from './components/symptomVault.js';
 import { renderAnalytics, initAnalytics } from './components/analytics.js';
-import { renderZen, initZen } from './components/zenCenter.js';
+import { renderZen, initZen, destroyZen } from './components/zenCenter.js';
 import { renderOnboarding, initOnboarding } from './components/onboarding.js';
 import { renderResources, initResources } from './components/resources.js';
+import { renderAccountSettings, initAccountSettings } from './components/accountSettings.js';
 import {
   registerServiceWorker,
   renderNotificationBanner,
@@ -102,7 +103,15 @@ async function loadApp() {
       initOnboarding(currentUser.id, async () => {
         // Refresh profile and re-render dashboard with biometrics
         try { currentProfile = await fetchUser(currentUser.id); } catch (_) {}
-        navigateTo('dashboard');
+        await navigateTo('dashboard');
+        // Now that onboarding is done, offer notifications after a short delay
+        setTimeout(() => {
+          const s = document.getElementById('notif-banner-slot');
+          if (s && Notification.permission !== 'granted') {
+            s.innerHTML = renderNotificationBanner(currentUser.id);
+            initNotificationBanner(currentUser.id);
+          }
+        }, 4000);
       });
     }
   }
@@ -113,8 +122,8 @@ function renderAppShell() {
     <!-- Toast container -->
     <div id="toast-container"></div>
 
-    <!-- App wrapper -->
-    <div class="max-w-lg mx-auto min-h-screen flex flex-col">
+    <!-- App wrapper — no fixed height; body scrolls naturally -->
+    <div class="max-w-lg mx-auto min-h-dvh">
 
       <!-- Top bar -->
       <header class="sticky top-0 z-30 bg-navy-800/90 backdrop-blur-sm border-b border-slate-700/50">
@@ -146,6 +155,15 @@ function renderAppShell() {
               title="Install app">
               <i class="fa-solid fa-download text-indigo-400 text-xs"></i>
               <span class="text-indigo-400 text-xs font-medium hidden sm:inline">Install</span>
+            </button>
+
+            <!-- Settings -->
+            <button id="settings-btn"
+              class="flex items-center justify-center w-8 h-8 rounded-lg
+                     bg-slate-700/50 border border-slate-600/50
+                     hover:bg-slate-700 hover:border-slate-500 transition-colors"
+              title="Account settings">
+              <i class="fa-solid fa-gear text-slate-400 text-xs"></i>
             </button>
 
             <!-- Google avatar + sign-out -->
@@ -181,8 +199,8 @@ function renderAppShell() {
         </div>
       </header>
 
-      <!-- Main content area -->
-      <main id="main-content" class="flex-1 px-4 py-5 pb-28">
+      <!-- Main content area — grows with content; pb-28 clears the fixed bottom nav -->
+      <main id="main-content" class="px-4 py-5 pb-28">
         <!-- Injected by navigateTo() -->
       </main>
 
@@ -233,6 +251,22 @@ function renderAppShell() {
     }
   });
 
+  // Settings
+  document.getElementById('settings-btn')?.addEventListener('click', () => {
+    // Remove any existing settings overlay before opening
+    document.getElementById('settings-overlay')?.remove();
+    document.body.insertAdjacentHTML('beforeend', renderAccountSettings(currentProfile));
+    initAccountSettings(currentUser.id, currentProfile, async (updates) => {
+      // Merge updates into currentProfile immediately
+      currentProfile = { ...currentProfile, ...updates };
+      showToast('Settings saved!', 'success');
+      // Re-render current section so changes (habits, vault, resources, analytics) take effect
+      if (['dashboard', 'resources', 'vault', 'analytics'].includes(activeSection)) {
+        await navigateTo(activeSection);
+      }
+    });
+  });
+
   // PWA install
   document.getElementById('pwa-install-btn')?.addEventListener('click', async () => {
     if (!deferredInstallPrompt) return;
@@ -265,8 +299,10 @@ function renderAppShell() {
     if (lvlEl) lvlEl.textContent = `Lv.${user.current_level || 1}`;
   });
 
-  // Notification banner (deferred — don't block render)
+  // Notification banner — only show if onboarding is already complete.
+  // New users see it in the onboarding completion callback instead.
   setTimeout(() => {
+    if (!currentProfile?.onboarding_complete) return;
     const slot = document.getElementById('notif-banner-slot');
     if (slot && Notification.permission !== 'granted') {
       slot.innerHTML = renderNotificationBanner(currentUser.id);
@@ -278,6 +314,7 @@ function renderAppShell() {
 // ─── Navigation ───────────────────────────────────────────────
 async function navigateTo(section) {
   if (!SECTIONS.includes(section)) return;
+  if (activeSection === 'zen' && section !== 'zen') destroyZen();
   activeSection = section;
 
   // Update nav highlighting
@@ -292,7 +329,7 @@ async function navigateTo(section) {
   switch (section) {
     case 'dashboard':
       main.innerHTML = renderDashboard(currentProfile, currentUser);
-      await initDashboard(currentUser.id);
+      await initDashboard(currentUser.id, currentProfile);
       break;
 
     case 'vault':
@@ -302,7 +339,7 @@ async function navigateTo(section) {
 
     case 'analytics':
       main.innerHTML = renderAnalytics();
-      await initAnalytics(currentUser.id);
+      await initAnalytics(currentUser.id, currentProfile);
       break;
 
     case 'zen':
@@ -319,8 +356,8 @@ async function navigateTo(section) {
   // Refresh XP header after any section transition
   refreshHeaderXp();
 
-  // Scroll to top
-  main.parentElement?.scrollTo({ top: 0 });
+  // Scroll to top of page on section change
+  window.scrollTo({ top: 0, behavior: 'instant' });
 }
 
 // ─── XP header refresh ───────────────────────────────────────

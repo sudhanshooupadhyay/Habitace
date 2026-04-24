@@ -22,12 +22,13 @@ let state = {
 // ─── Render ───────────────────────────────────────────────────
 export function renderOnboarding() {
   return `
-    <!-- Overlay -->
+    <!-- Overlay — overflow-y-auto so long steps scroll on small phones -->
     <div id="onboarding-overlay"
-      class="fixed inset-0 z-50 bg-navy-900/95 backdrop-blur-sm flex items-center justify-center p-4">
+      class="fixed inset-0 z-50 bg-navy-900/95 backdrop-blur-sm overflow-y-auto">
+      <div class="flex items-start justify-center min-h-full p-4 py-6">
 
       <div id="onboarding-card"
-        class="w-full max-w-md bg-navy-600 rounded-2xl border border-indigo-500/30 shadow-2xl overflow-hidden animate-slide-up">
+        class="w-full max-w-md bg-navy-600 rounded-2xl border border-indigo-500/30 shadow-2xl animate-slide-up">
 
         <!-- Progress bar -->
         <div class="h-1 bg-slate-700">
@@ -42,7 +43,8 @@ export function renderOnboarding() {
         </div>
 
       </div>
-    </div>
+      </div><!-- /.flex inner wrapper -->
+    </div><!-- /#onboarding-overlay -->
   `;
 }
 

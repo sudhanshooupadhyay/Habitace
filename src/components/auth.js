@@ -438,6 +438,8 @@ function _initSignUp() {
     if (barLabel) { barLabel.textContent = label; barLabel.className = `text-xs text-${color}-400 text-right`; }
   });
 
+  let signupCooldownTimer = null;
+
   document.getElementById('form-signup')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email    = document.getElementById('su-email')?.value.trim();
@@ -446,6 +448,9 @@ function _initSignUp() {
     const errEl    = document.getElementById('su-error');
     const succEl   = document.getElementById('su-success');
     const btn      = document.getElementById('btn-signup');
+
+    // If still in cooldown, do nothing
+    if (btn.disabled) return;
 
     errEl.classList.add('hidden');
     succEl.classList.add('hidden');
@@ -463,9 +468,32 @@ function _initSignUp() {
       succEl.classList.remove('hidden');
       _setLoading(btn, false, 'Create Account');
     } catch (err) {
-      errEl.textContent = _friendlyError(err.message);
+      const friendly = _friendlyError(err.message);
+      errEl.textContent = friendly;
       errEl.classList.remove('hidden');
-      _setLoading(btn, false, 'Create Account');
+
+      // If rate-limited, disable the button with a countdown
+      const isRateLimited = _isRateLimitError(err.message);
+      if (isRateLimited) {
+        clearInterval(signupCooldownTimer);
+        let seconds = _extractCooldownSeconds(err.message) || 60;
+        btn.disabled = true;
+
+        const tick = () => {
+          if (seconds <= 0) {
+            clearInterval(signupCooldownTimer);
+            _setLoading(btn, false, 'Create Account');
+            errEl.classList.add('hidden');
+            return;
+          }
+          btn.innerHTML = `<i class="fa-solid fa-clock mr-2"></i>Wait ${seconds}s…`;
+          seconds--;
+        };
+        tick();
+        signupCooldownTimer = setInterval(tick, 1000);
+      } else {
+        _setLoading(btn, false, 'Create Account');
+      }
     }
   });
 }
@@ -534,8 +562,30 @@ function _friendlyError(msg = '') {
   if (msg.includes('Invalid login credentials')) return 'Incorrect email or password.';
   if (msg.includes('Email not confirmed'))       return 'Please confirm your email first — check your inbox.';
   if (msg.includes('User already registered'))   return 'An account with this email already exists. Try signing in.';
-  if (msg.includes('rate limit'))                return 'Too many attempts. Please wait a moment and try again.';
+  if (_isRateLimitError(msg)) {
+    const secs = _extractCooldownSeconds(msg);
+    return secs
+      ? `Too many attempts. Please wait ${secs} seconds before trying again.`
+      : 'Too many attempts. Please wait a moment and try again.';
+  }
   return msg || 'Something went wrong. Please try again.';
+}
+
+function _isRateLimitError(msg = '') {
+  const lower = msg.toLowerCase();
+  return (
+    lower.includes('rate limit') ||
+    lower.includes('too many') ||
+    lower.includes('for security purposes') ||
+    lower.includes('over_email_send_rate_limit') ||
+    lower.includes('email rate limit')
+  );
+}
+
+function _extractCooldownSeconds(msg = '') {
+  // Supabase sometimes includes "after X seconds" in the error message
+  const match = msg.match(/after\s+(\d+)\s+second/i);
+  return match ? parseInt(match[1], 10) : null;
 }
 
 function _pwStrength(pw) {

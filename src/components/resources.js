@@ -426,7 +426,7 @@ export async function initResources(userId, userProfile, authUser = null) {
     const profile = userProfile || {};
 
     renderProgressHero(profile, authUser);
-    renderHeatmap(habits14);
+    renderHeatmap(habits14, profile);
     renderMilestones(profile, habits14, anxietyCount);
     renderLearningSection(habits14, anxietyCount, workoutCount, profile);
     renderResourceCards(profile, habits14, anxietyCount, workoutCount);
@@ -591,12 +591,16 @@ function renderProgressHero(profile, authUser = null) {
 }
 
 // ─── Consistency heatmap ──────────────────────────────────────
-function renderHeatmap(habits14) {
+function renderHeatmap(habits14, profile = {}) {
   const grid    = document.getElementById('heatmap-grid');
   const pctEl   = document.getElementById('consistency-pct');
   if (!grid) return;
 
-  const FIELDS  = ['studying', 'workout', 'eating_clean', 'meditation', 'smoke_free'];
+  // Only count the 5th (vice) habit if the user actually has a vice set
+  const hasVice = Array.isArray(profile.vices) && profile.vices.length > 0;
+  const FIELDS  = hasVice
+    ? ['studying', 'workout', 'eating_clean', 'meditation', 'smoke_free']
+    : ['studying', 'workout', 'eating_clean', 'meditation'];
   const today   = new Date();
 
   // Build lookup by date string
@@ -638,7 +642,7 @@ function renderHeatmap(habits14) {
         <!-- Tooltip -->
         <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-900 border border-slate-700
                     rounded-lg text-xs text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
-          ${label}: ${h ? `${completed}/5` : 'No data'}
+          ${label}: ${h ? `${completed}/${FIELDS.length}` : 'No data'}
         </div>
       </div>`;
   });

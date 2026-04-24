@@ -129,15 +129,15 @@ export function renderAnalytics() {
   `;
 }
 
-export async function initAnalytics(userId) {
-  await loadChartData(userId, 30);
+export async function initAnalytics(userId, userProfile = {}) {
+  await loadChartData(userId, 30, userProfile);
 
   document.getElementById('chart-range')?.addEventListener('change', async (e) => {
-    await loadChartData(userId, parseInt(e.target.value, 10));
+    await loadChartData(userId, parseInt(e.target.value, 10), userProfile);
   });
 }
 
-async function loadChartData(userId, days) {
+async function loadChartData(userId, days, userProfile = {}) {
   const loading = document.getElementById('chart-loading');
   if (loading) loading.style.display = 'flex';
 
@@ -149,7 +149,7 @@ async function loadChartData(userId, days) {
 
     renderSummaryCards(habits, anxiety);
     renderChart(habits, anxiety, days);
-    renderHabitGrid(habits);
+    renderHabitGrid(habits, userProfile);
   } catch (err) {
     console.error('[Analytics] Load failed:', err);
 
@@ -313,7 +313,16 @@ function renderChart(habits, anxiety, days) {
   });
 }
 
-function renderHabitGrid(habits) {
+// Vice → display label map for the analytics grid
+const VICE_LABELS = {
+  smoking:      'Smoke Free',
+  alcohol:      'Alcohol Free',
+  gambling:     'No Gambling',
+  junk_food:    'No Junk Food',
+  social_media: 'Screen Limit',
+};
+
+function renderHabitGrid(habits, userProfile = {}) {
   const grid = document.getElementById('habit-grid');
   if (!grid) return;
 
@@ -326,12 +335,16 @@ function renderHabitGrid(habits) {
     return;
   }
 
+  const userVice    = Array.isArray(userProfile.vices) ? userProfile.vices[0] : null;
+  const viceLabel   = userVice ? (VICE_LABELS[userVice] || 'Vice Free') : null;
+
   const HABIT_KEYS = [
-    { key: 'studying',     label: 'Study',   color: '#6366f1' },
-    { key: 'workout',      label: 'Workout', color: '#10b981' },
-    { key: 'eating_clean', label: 'Eating',  color: '#f59e0b' },
-    { key: 'meditation',   label: 'Meditate',color: '#8b5cf6' },
-    { key: 'smoke_free',   label: 'No Smoke',color: '#38bdf8' },
+    { key: 'studying',     label: 'Study',    color: '#6366f1' },
+    { key: 'workout',      label: 'Workout',  color: '#10b981' },
+    { key: 'eating_clean', label: 'Eating',   color: '#f59e0b' },
+    { key: 'meditation',   label: 'Meditate', color: '#8b5cf6' },
+    // Only show the vice habit row if the user has a vice set
+    ...(viceLabel ? [{ key: 'smoke_free', label: viceLabel, color: '#38bdf8' }] : []),
   ];
 
   // Build last 30 dates
