@@ -1,4 +1,4 @@
-import { saveUserProfile } from '../lib/supabase.js';
+import { saveUserProfile, deleteUserAccount } from '../lib/supabase.js';
 
 const VICE_OPTIONS = [
   { key: 'smoking',      label: 'Smoking',      icon: 'fa-smoking'        },
@@ -237,6 +237,17 @@ export function renderAccountSettings(profile) {
             <span id="settings-save-spinner" class="hidden"><i class="fa-solid fa-circle-notch fa-spin"></i></span>
           </button>
 
+          <!-- ── Danger Zone ────────────────────────────────────── -->
+          <div class="border-t border-slate-700/50 pt-4">
+            <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-3">Danger Zone</p>
+            <button id="settings-delete-account"
+              class="w-full bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 hover:border-red-500/50
+                     text-red-400 hover:text-red-300 font-semibold py-3 rounded-xl transition-colors text-sm">
+              <i class="fa-solid fa-trash-can mr-2"></i>Delete Account &amp; All Data
+            </button>
+            <p class="text-slate-600 text-xs mt-1.5 text-center">Permanently erases everything. Cannot be undone.</p>
+          </div>
+
         </div>
       </div>
     </div>
@@ -257,6 +268,14 @@ export function initAccountSettings(userId, currentProfile, onSave) {
   document.getElementById('settings-close')?.addEventListener('click', close);
   document.getElementById('settings-overlay')?.addEventListener('click', (e) => {
     if (e.target.id === 'settings-overlay') close();
+  });
+
+  // ── Delete account ───────────────────────────────────────────
+  document.getElementById('settings-delete-account')?.addEventListener('click', () => {
+    // Remove any stale modal first, then inject a fresh one
+    document.getElementById('delete-confirm-overlay')?.remove();
+    document.body.insertAdjacentHTML('beforeend', renderDeleteConfirmModal());
+    initDeleteConfirmModal(userId);
   });
 
   // ── Anxiety toggles ─────────────────────────────────────────
@@ -412,6 +431,104 @@ export function initAccountSettings(userId, currentProfile, onSave) {
       saveSpinner.classList.add('hidden');
     }
   });
+}
+
+// ─── Delete-account confirmation modal ────────────────────────
+function renderDeleteConfirmModal() {
+  return `
+    <div id="delete-confirm-overlay"
+      class="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+      <div class="w-full max-w-sm bg-navy-600 rounded-2xl border border-red-500/30 shadow-2xl p-5 animate-slide-up">
+
+        <!-- Header -->
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-10 h-10 rounded-xl bg-red-500/20 border border-red-500/30 flex items-center justify-center flex-shrink-0">
+            <i class="fa-solid fa-triangle-exclamation text-red-400"></i>
+          </div>
+          <div>
+            <h3 class="text-white font-bold">Delete Account</h3>
+            <p class="text-slate-400 text-xs">This cannot be undone</p>
+          </div>
+        </div>
+
+        <p class="text-slate-300 text-sm mb-5 leading-relaxed">
+          All your habits, streaks, vault entries, analytics, and settings will be
+          <span class="text-red-400 font-semibold">permanently erased</span>.
+          You will be logged out immediately.
+        </p>
+
+        <!-- Confirmation input -->
+        <div class="mb-5">
+          <label class="text-slate-400 text-xs font-medium mb-1.5 block">
+            Type <span class="text-red-400 font-mono font-bold">delete</span> to confirm
+          </label>
+          <input id="delete-confirm-input" type="text"
+            placeholder="delete"
+            autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+            class="w-full bg-slate-800 border border-slate-600 focus:border-red-500/60 rounded-xl
+                   px-3 py-2.5 text-white text-sm placeholder-slate-600
+                   focus:outline-none transition-colors" />
+        </div>
+
+        <!-- Actions -->
+        <div class="flex gap-3">
+          <button id="delete-confirm-cancel"
+            class="flex-1 py-2.5 rounded-xl text-sm font-medium
+                   bg-slate-700/60 border border-slate-600 text-slate-300
+                   hover:text-white hover:bg-slate-700 transition-colors">
+            Cancel
+          </button>
+          <button id="delete-confirm-go" disabled
+            class="flex-1 py-2.5 rounded-xl text-sm font-semibold
+                   bg-red-600 text-white
+                   disabled:opacity-40 disabled:cursor-not-allowed
+                   hover:bg-red-500 transition-colors">
+            <span id="delete-confirm-text"><i class="fa-solid fa-trash-can mr-1.5"></i>Delete</span>
+            <span id="delete-confirm-spinner" class="hidden">
+              <i class="fa-solid fa-circle-notch fa-spin"></i>
+            </span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  `;
+}
+
+function initDeleteConfirmModal(userId) {
+  const removeModal = () => document.getElementById('delete-confirm-overlay')?.remove();
+
+  document.getElementById('delete-confirm-cancel')?.addEventListener('click', removeModal);
+
+  // Enable the Delete button only when the user has typed exactly "delete"
+  const input  = document.getElementById('delete-confirm-input');
+  const goBtn  = document.getElementById('delete-confirm-go');
+  input?.addEventListener('input', () => {
+    goBtn.disabled = input.value.trim().toLowerCase() !== 'delete';
+  });
+
+  goBtn?.addEventListener('click', async () => {
+    if (input.value.trim().toLowerCase() !== 'delete') return;
+
+    goBtn.disabled = true;
+    document.getElementById('delete-confirm-text').classList.add('hidden');
+    document.getElementById('delete-confirm-spinner').classList.remove('hidden');
+
+    try {
+      await deleteUserAccount(userId);
+      // onAuthStateChange in main.js will handle rendering the login screen
+    } catch (err) {
+      console.error('[deleteAccount] Failed:', err);
+      // Restore button so user can retry
+      goBtn.disabled = false;
+      document.getElementById('delete-confirm-text').classList.remove('hidden');
+      document.getElementById('delete-confirm-spinner').classList.add('hidden');
+      input.style.borderColor = 'rgb(239 68 68 / 0.8)';
+    }
+  });
+
+  // Auto-focus the input
+  setTimeout(() => input?.focus(), 50);
 }
 
 // ─── Util ─────────────────────────────────────────────────────

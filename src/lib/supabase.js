@@ -350,3 +350,40 @@ export async function savePushSubscription(userId, subscription) {
     );
   if (error) throw error;
 }
+
+// ─── Account deletion ────────────────────────────────────────
+// Wipes all user data, clears local storage, and signs out.
+// All public tables reference public.users(id) ON DELETE CASCADE,
+// so deleting the profile row removes everything. The optional RPC
+// (supabase/migrations_v4.sql) additionally removes the auth.users entry.
+export async function deleteUserAccount(userId) {
+  // Delete every user-owned table in parallel (RLS ensures own-rows only)
+  const tables = [
+    'push_subscriptions',
+    'garmin_connections',
+    'bio_age_logs',
+    'anxiety_vault',
+    'workout_logs',
+    'weight_logs',
+    'daily_metrics',
+    'habits',
+  ];
+  await Promise.allSettled(
+    tables.map((t) => supabase.from(t).delete().eq('user_id', userId))
+  );
+
+  // Delete the profile row — cascades any remaining child rows
+  await supabase.from('users').delete().eq('id', userId);
+
+  // Attempt full auth-user deletion via SECURITY DEFINER RPC
+  // (requires running supabase/migrations_v4.sql — gracefully skipped if absent)
+  try {
+    await supabase.rpc('delete_user_account');
+  } catch (_) { /* RPC not installed — data is already wiped above */ }
+
+  // Wipe any PWA / localStorage state
+  localStorage.clear();
+
+  // Sign out — triggers onAuthStateChange → renderLoginScreen
+  await supabase.auth.signOut();
+}
