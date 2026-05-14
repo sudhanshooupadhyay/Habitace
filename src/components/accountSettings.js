@@ -164,9 +164,8 @@ export function renderAccountSettings(profile) {
                 <label class="form-label">Quit start date</label>
                 <input id="settings-quit-date" type="date"
                   value="${quitDate}"
-                  max="${_todayStr()}"
                   class="input-field" />
-                <p class="text-slate-500 text-xs mt-1">Can be today or a past date.</p>
+                <p class="text-slate-500 text-xs mt-1">Set a past date (quit started) or a future target date.</p>
               </div>
 
               <!-- Usage details — only for smoking / alcohol -->

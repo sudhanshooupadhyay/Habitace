@@ -1,12 +1,15 @@
 {
   "name": "Discipline Tracker",
   "short_name": "Discipline",
-  "description": "Track habits, conquer health anxiety, and build iron discipline.",
+  "description": "Track habits, conquer health anxiety, set alarms, meditate, and build iron discipline.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0a0f1e",
-  "theme_color": "#0a0f1e",
+  "display_override": ["standalone", "minimal-ui"],
+  "background_color": "#060914",
+  "theme_color": "#060914",
   "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en",
   "icons": [
     {
       "src": "/icons/icon.svg",
@@ -27,5 +30,22 @@
       "purpose": "any maskable"
     }
   ],
-  "categories": ["health", "productivity", "lifestyle"]
+  "shortcuts": [
+    {
+      "name": "Daily Habits",
+      "short_name": "Habits",
+      "description": "Check off your daily five habits",
+      "url": "/",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Zen & Alarms",
+      "short_name": "Zen",
+      "description": "Breathing, meditation and alarm controls",
+      "url": "/?section=zen",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "categories": ["health", "productivity", "lifestyle", "fitness"],
+  "prefer_related_applications": false
 }

@@ -13,6 +13,7 @@ import {
   renderNotificationBanner,
   initNotificationBanner,
 } from './components/notifications.js';
+import { initAlarmSystem, destroyAlarmSystem } from './components/alarmSystem.js';
 
 // ─── App state ────────────────────────────────────────────────
 let currentUser    = null;
@@ -38,6 +39,7 @@ const SECTIONS = ['dashboard', 'vault', 'analytics', 'zen', 'resources'];
 // ─── Boot ─────────────────────────────────────────────────────
 async function boot() {
   await registerServiceWorker();
+  initAlarmSystem();
 
   // If arriving from a password-reset email, let onAuthStateChange handle it
   const isRecovery = window.location.hash.includes('type=recovery');

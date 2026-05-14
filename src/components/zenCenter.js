@@ -1,5 +1,6 @@
-// Zen Center: Box Breathing, Meditation Timer, Pomodoro + Resource library
+// Zen Center: Box Breathing, Meditation Timer, Pomodoro + Meditation Videos + Alarms
 import { fetchOrCreateTodayHabits, updateHabit, addXp } from '../lib/supabase.js';
+import { renderAlarmSection, initAlarmSection } from './alarmSystem.js';
 
 let pomodoroInterval  = null;
 let pomodoroSeconds   = 25 * 60;
@@ -75,14 +76,86 @@ const RESOURCES = [
       { title: 'GZCLP — Full Body Progression', url: 'https://www.reddit.com/r/Fitness/wiki/gzclp' },
     ],
   },
+];
+
+// Curated meditation video program — each video has a YouTube ID so we can embed it
+const MEDITATION_VIDEOS = [
   {
-    category: 'Guided Meditation (YouTube)',
-    icon: 'fa-play-circle',
-    color: 'purple',
-    items: [
-      { title: '10-Min Body Scan for Anxiety (Headspace)', url: 'https://www.youtube.com/watch?v=MIr3RsUWrdo' },
-      { title: 'NSDR / Yoga Nidra (Andrew Huberman)', url: 'https://www.youtube.com/watch?v=pL02HnFAMfk' },
-      { title: '5-Min Grounding Exercise (54321 Method)', url: 'https://www.youtube.com/watch?v=30VMIEmA114' },
+    category: 'Healing & Recovery',
+    icon: 'fa-heart-pulse',
+    color: '#f472b6',
+    glow: '#ec4899',
+    desc: 'Deep healing meditations to restore nervous system balance and release stored tension.',
+    videos: [
+      { title: '10-Min Body Scan for Anxiety', channel: 'Headspace', duration: '10 min', id: 'MIr3RsUWrdo', tag: 'Anxiety Relief' },
+      { title: 'NSDR / Yoga Nidra — Deep Rest Protocol', channel: 'Andrew Huberman', duration: '20 min', id: 'pL02HnFAMfk', tag: 'Sleep & Recovery' },
+      { title: '528 Hz — Healing Frequency Meditation', channel: 'Meditative Mind', duration: '1 hr', id: 'LMHGvOHJ2s8', tag: '528 Hz' },
+      { title: 'Letting Go — Release Anxiety & Fear', channel: 'Jason Stephenson', duration: '30 min', id: '1vx8iUvfyCY', tag: 'Emotional Release' },
+    ],
+  },
+  {
+    category: 'Focus & Deep Work',
+    icon: 'fa-bullseye',
+    color: '#60a5fa',
+    glow: '#3b82f6',
+    desc: 'Sharpen your mind and enter a state of deep, effortless concentration.',
+    videos: [
+      { title: 'Alpha Waves — Focus & Super Learning', channel: 'Greenred Productions', duration: '3 hr', id: 'WPni755-Krg', tag: 'Alpha Waves' },
+      { title: '40 Hz Gamma Waves — Peak Mental Performance', channel: 'Binaural Beats', duration: '1 hr', id: 'tBBASzs9E5w', tag: 'Gamma Waves' },
+      { title: '5-Min Grounding Exercise — 54321 Method', channel: 'Therapy in a Nutshell', duration: '5 min', id: '30VMIEmA114', tag: 'Grounding' },
+      { title: 'Pomodoro Focus Music — Deep Work Session', channel: 'StudyMD', duration: '2 hr', id: '5qap5aO4i9A', tag: 'Work Music' },
+    ],
+  },
+  {
+    category: 'Manifestation & Abundance',
+    icon: 'fa-wand-magic-sparkles',
+    color: '#a78bfa',
+    glow: '#8b5cf6',
+    desc: 'Rewire your subconscious for success, abundance, and the life you\'re building.',
+    videos: [
+      { title: 'Law of Attraction — Morning Meditation', channel: 'Great Meditation', duration: '20 min', id: 'U923bN37SWE', tag: 'Morning' },
+      { title: 'Reprogram Your Subconscious — Abundance', channel: 'Vortex Success', duration: '30 min', id: 'MfPzN4AO4ok', tag: 'Subconscious' },
+      { title: '396 Hz — Release Fear, Guilt & Negativity', channel: 'Solfeggio Frequencies', duration: '1 hr', id: 'Dcp3HAFTojE', tag: 'Solfeggio' },
+      { title: 'I Am Affirmations — Identity Shift', channel: 'Bob Baker', duration: '15 min', id: 'nBVE8BHaXqk', tag: 'Affirmations' },
+    ],
+  },
+  {
+    category: 'Morning Energy & Power',
+    icon: 'fa-sun',
+    color: '#fbbf24',
+    glow: '#f59e0b',
+    desc: 'Charge yourself with purpose and energy to dominate your day from the first breath.',
+    videos: [
+      { title: '10-Min Morning Meditation — Rise & Conquer', channel: 'Mindful Movement', duration: '10 min', id: 'inpok4MKVLM', tag: 'Morning Power' },
+      { title: 'Wim Hof Breathing — Energy & Alertness', channel: 'Wim Hof Method', duration: '11 min', id: 'tybOi4hjZFQ', tag: 'Breathwork' },
+      { title: 'Binaural Beats Morning — Alpha to Beta', channel: 'Quadible Integrity', duration: '30 min', id: 'xRKPH8YQGTE', tag: 'Morning Activation' },
+      { title: '432 Hz — Full Body Positive Energy', channel: 'Meditative Mind', duration: '3 hr', id: 'JhLFRf4kXyM', tag: '432 Hz' },
+    ],
+  },
+  {
+    category: 'Sleep & Deep Relaxation',
+    icon: 'fa-moon',
+    color: '#38bdf8',
+    glow: '#0ea5e9',
+    desc: 'Wind down completely and enter the deep, restorative sleep your body deserves.',
+    videos: [
+      { title: '8-Hour Sleep Music — Delta Waves', channel: 'PowerThoughts Meditation', duration: '8 hr', id: 'rkZl5ghYMoQ', tag: 'Delta Waves' },
+      { title: 'Body Scan for Sleep — Progressive Relaxation', channel: 'The Mindful Movement', duration: '25 min', id: 'hYmMJ1oWpRs', tag: 'Sleep' },
+      { title: '174 Hz — Pain Relief & Relaxation', channel: 'Meditative Mind', duration: '3 hr', id: 'FNtMoXKR0Qk', tag: 'Solfeggio' },
+      { title: 'Guided Sleep Meditation — Let Go of Worry', channel: 'Jason Stephenson', duration: '45 min', id: 'ezEo0r7BPEM', tag: 'Stress Relief' },
+    ],
+  },
+  {
+    category: 'Pure Meditation',
+    icon: 'fa-spa',
+    color: '#34d399',
+    glow: '#10b981',
+    desc: 'Classic, unguided meditation sessions. Sit. Breathe. Be.',
+    videos: [
+      { title: 'OM Chanting — 108 Times for Meditation', channel: 'Meditative Mind', duration: '60 min', id: 'cLR9eWfRl7A', tag: 'Mantra' },
+      { title: 'Tibetan Singing Bowls — 1 Hour', channel: 'Tibetan Healing Sounds', duration: '1 hr', id: 'vO6mMnWkCkU', tag: 'Sound Bath' },
+      { title: 'Zazen — Zen Meditation Session', channel: 'Tao Meditation', duration: '20 min', id: '7EBsCEEsTU4', tag: 'Zen' },
+      { title: 'Vipassana — Silent Mindfulness Meditation', channel: 'Goenka', duration: '45 min', id: 'sAoYorFEHhA', tag: 'Vipassana' },
     ],
   },
 ];
@@ -361,9 +434,83 @@ export function renderZen() {
         </div>
       </div>
 
+      <!-- Alarm System -->
+      ${renderAlarmSection()}
+
+      <!-- Meditation Video Program -->
+      <div class="rounded-2xl border border-slate-700/40 overflow-hidden" style="background:rgba(10,12,24,0.95);">
+        <div class="p-5 border-b border-slate-800/60">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                 style="background:linear-gradient(135deg,rgba(168,85,247,0.2),rgba(99,102,241,0.1));">
+              <i class="fa-brands fa-youtube text-purple-400 text-sm"></i>
+            </div>
+            <div>
+              <h3 class="text-white font-bold">Meditation Video Program</h3>
+              <p class="text-slate-500 text-xs">Curated sessions for healing, focus, manifestation & sleep</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Category tabs -->
+        <div class="flex overflow-x-auto gap-2 px-4 py-3 border-b border-slate-800/60 scrollbar-hide">
+          ${MEDITATION_VIDEOS.map((cat, i) => `
+            <button class="med-vid-tab flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+              data-tab="${i}"
+              style="${i === 0
+                ? `background:${cat.color}20;color:${cat.color};border:1px solid ${cat.color}40;`
+                : 'background:rgba(255,255,255,0.03);color:#64748b;border:1px solid rgba(255,255,255,0.06);'}">
+              <i class="fa-solid ${cat.icon} mr-1.5"></i>${cat.category}
+            </button>
+          `).join('')}
+        </div>
+
+        <!-- Video panels -->
+        <div id="med-vid-panels">
+          ${MEDITATION_VIDEOS.map((cat, i) => `
+            <div class="med-vid-panel ${i === 0 ? '' : 'hidden'}" data-panel="${i}">
+              <div class="p-4 pb-2">
+                <p class="text-slate-500 text-xs leading-relaxed">${cat.desc}</p>
+              </div>
+              <div class="grid grid-cols-1 gap-3 p-4 pt-2">
+                ${cat.videos.map((v) => `
+                  <a href="https://www.youtube.com/watch?v=${v.id}" target="_blank" rel="noopener noreferrer"
+                     class="flex gap-3 p-3 rounded-xl transition-all group"
+                     style="background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.05);">
+                    <!-- Thumbnail -->
+                    <div class="relative flex-shrink-0 w-24 rounded-lg overflow-hidden"
+                         style="aspect-ratio:16/9;background:#111;">
+                      <img src="https://img.youtube.com/vi/${v.id}/mqdefault.jpg"
+                           alt="${v.title}" loading="lazy"
+                           class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                      <div class="absolute inset-0 flex items-center justify-center">
+                        <div class="w-7 h-7 rounded-full flex items-center justify-center"
+                             style="background:rgba(220,38,38,0.9);">
+                          <i class="fa-solid fa-play text-white" style="font-size:0.6rem;margin-left:2px;"></i>
+                        </div>
+                      </div>
+                    </div>
+                    <!-- Info -->
+                    <div class="flex-1 min-w-0">
+                      <p class="text-white text-xs font-semibold leading-snug mb-1 group-hover:text-purple-300 transition-colors line-clamp-2">${v.title}</p>
+                      <p class="text-slate-600 text-xs">${v.channel}</p>
+                      <div class="flex items-center gap-2 mt-1.5">
+                        <span class="text-xs px-1.5 py-0.5 rounded font-medium"
+                              style="background:${cat.color}15;color:${cat.color};font-size:0.6rem;">${v.tag}</span>
+                        <span class="text-slate-700 text-xs">${v.duration}</span>
+                      </div>
+                    </div>
+                  </a>
+                `).join('')}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
       <!-- Resource Library -->
-      <div class="bg-navy-600 rounded-2xl border border-slate-700/50 p-6">
-        <h3 class="text-white font-semibold mb-5 flex items-center gap-2">
+      <div class="rounded-2xl border border-slate-700/50 p-5" style="background:rgba(15,20,35,0.9);">
+        <h3 class="text-white font-semibold mb-4 flex items-center gap-2 text-sm">
           <i class="fa-solid fa-book text-amber-400"></i>
           Resource Library
         </h3>
@@ -414,6 +561,33 @@ export function initZen(userId = null) {
   initBreathing();
   initMeditation(userId);
   initPomodoro();
+  initAlarmSection();
+  initMeditationVideoTabs();
+}
+
+function initMeditationVideoTabs() {
+  const tabs   = document.querySelectorAll('.med-vid-tab');
+  const panels = document.querySelectorAll('.med-vid-panel');
+
+  tabs.forEach((tab, i) => {
+    tab.addEventListener('click', () => {
+      const catIndex = parseInt(tab.dataset.tab, 10);
+      const cat      = MEDITATION_VIDEOS[catIndex];
+
+      tabs.forEach((t, j) => {
+        const c = MEDITATION_VIDEOS[j];
+        if (j === catIndex) {
+          t.style.cssText = `background:${c.color}20;color:${c.color};border:1px solid ${c.color}40;`;
+        } else {
+          t.style.cssText = 'background:rgba(255,255,255,0.03);color:#64748b;border:1px solid rgba(255,255,255,0.06);';
+        }
+      });
+
+      panels.forEach((panel) => {
+        panel.classList.toggle('hidden', parseInt(panel.dataset.panel, 10) !== catIndex);
+      });
+    });
+  });
 }
 
 // ─── Cleanup (called from main.js when navigating away) ───────
