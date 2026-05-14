@@ -78,7 +78,7 @@ const RESOURCES = [
   },
 ];
 
-// Curated meditation video program — each video has a YouTube ID so we can embed it
+// Curated meditation video program — uses YouTube search URLs (always available, never 404)
 const MEDITATION_VIDEOS = [
   {
     category: 'Healing & Recovery',
@@ -87,10 +87,10 @@ const MEDITATION_VIDEOS = [
     glow: '#ec4899',
     desc: 'Deep healing meditations to restore nervous system balance and release stored tension.',
     videos: [
-      { title: '10-Min Body Scan for Anxiety', channel: 'Headspace', duration: '10 min', id: 'MIr3RsUWrdo', tag: 'Anxiety Relief' },
-      { title: 'NSDR / Yoga Nidra — Deep Rest Protocol', channel: 'Andrew Huberman', duration: '20 min', id: 'pL02HnFAMfk', tag: 'Sleep & Recovery' },
-      { title: '528 Hz — Healing Frequency Meditation', channel: 'Meditative Mind', duration: '1 hr', id: 'LMHGvOHJ2s8', tag: '528 Hz' },
-      { title: 'Letting Go — Release Anxiety & Fear', channel: 'Jason Stephenson', duration: '30 min', id: '1vx8iUvfyCY', tag: 'Emotional Release' },
+      { title: '10-Min Body Scan for Anxiety Relief', channel: 'Guided Meditation', duration: '10 min', searchUrl: 'https://www.youtube.com/results?search_query=10+minute+body+scan+meditation+anxiety+relief&sp=EgIYBA%3D%3D', tag: 'Anxiety Relief' },
+      { title: 'NSDR / Yoga Nidra — Deep Rest Protocol', channel: 'Non-Sleep Deep Rest', duration: '20 min', searchUrl: 'https://www.youtube.com/results?search_query=NSDR+yoga+nidra+deep+rest+protocol+huberman&sp=EgIYBA%3D%3D', tag: 'Sleep & Recovery' },
+      { title: '528 Hz — Healing Frequency Meditation', channel: 'Solfeggio Healing', duration: '1 hr', searchUrl: 'https://www.youtube.com/results?search_query=528+hz+healing+frequency+meditation+solfeggio&sp=EgIYBA%3D%3D', tag: '528 Hz' },
+      { title: 'Letting Go — Release Anxiety & Fear', channel: 'Guided Relaxation', duration: '30 min', searchUrl: 'https://www.youtube.com/results?search_query=letting+go+release+anxiety+fear+guided+meditation&sp=EgIYBA%3D%3D', tag: 'Emotional Release' },
     ],
   },
   {
@@ -100,10 +100,10 @@ const MEDITATION_VIDEOS = [
     glow: '#3b82f6',
     desc: 'Sharpen your mind and enter a state of deep, effortless concentration.',
     videos: [
-      { title: 'Alpha Waves — Focus & Super Learning', channel: 'Greenred Productions', duration: '3 hr', id: 'WPni755-Krg', tag: 'Alpha Waves' },
-      { title: '40 Hz Gamma Waves — Peak Mental Performance', channel: 'Binaural Beats', duration: '1 hr', id: 'tBBASzs9E5w', tag: 'Gamma Waves' },
-      { title: '5-Min Grounding Exercise — 54321 Method', channel: 'Therapy in a Nutshell', duration: '5 min', id: '30VMIEmA114', tag: 'Grounding' },
-      { title: 'Pomodoro Focus Music — Deep Work Session', channel: 'StudyMD', duration: '2 hr', id: '5qap5aO4i9A', tag: 'Work Music' },
+      { title: 'Alpha Waves — Focus & Super Learning', channel: 'Binaural Beats', duration: '3 hr', searchUrl: 'https://www.youtube.com/results?search_query=alpha+waves+focus+super+learning+study+music&sp=EgIYBA%3D%3D', tag: 'Alpha Waves' },
+      { title: '40 Hz Gamma Waves — Peak Mental Performance', channel: 'Gamma Binaural', duration: '1 hr', searchUrl: 'https://www.youtube.com/results?search_query=40hz+gamma+waves+peak+mental+performance+binaural+beats&sp=EgIYBA%3D%3D', tag: 'Gamma Waves' },
+      { title: '5-Min Grounding — 54321 Method', channel: 'Anxiety Relief', duration: '5 min', searchUrl: 'https://www.youtube.com/results?search_query=5+minute+grounding+exercise+54321+method+anxiety&sp=EgIYBA%3D%3D', tag: 'Grounding' },
+      { title: 'Pomodoro Focus Music — Deep Work Session', channel: 'Study Music', duration: '2 hr', searchUrl: 'https://www.youtube.com/results?search_query=pomodoro+focus+music+deep+work+study+session&sp=EgIYBA%3D%3D', tag: 'Work Music' },
     ],
   },
   {
@@ -113,10 +113,10 @@ const MEDITATION_VIDEOS = [
     glow: '#8b5cf6',
     desc: 'Rewire your subconscious for success, abundance, and the life you\'re building.',
     videos: [
-      { title: 'Law of Attraction — Morning Meditation', channel: 'Great Meditation', duration: '20 min', id: 'U923bN37SWE', tag: 'Morning' },
-      { title: 'Reprogram Your Subconscious — Abundance', channel: 'Vortex Success', duration: '30 min', id: 'MfPzN4AO4ok', tag: 'Subconscious' },
-      { title: '396 Hz — Release Fear, Guilt & Negativity', channel: 'Solfeggio Frequencies', duration: '1 hr', id: 'Dcp3HAFTojE', tag: 'Solfeggio' },
-      { title: 'I Am Affirmations — Identity Shift', channel: 'Bob Baker', duration: '15 min', id: 'nBVE8BHaXqk', tag: 'Affirmations' },
+      { title: 'Law of Attraction — Morning Meditation', channel: 'Manifestation', duration: '20 min', searchUrl: 'https://www.youtube.com/results?search_query=law+of+attraction+morning+meditation+manifestation&sp=EgIYBA%3D%3D', tag: 'Morning' },
+      { title: 'Reprogram Your Subconscious — Abundance', channel: 'Subconscious Mind', duration: '30 min', searchUrl: 'https://www.youtube.com/results?search_query=reprogram+subconscious+mind+abundance+wealth+meditation&sp=EgIYBA%3D%3D', tag: 'Subconscious' },
+      { title: '396 Hz — Release Fear, Guilt & Negativity', channel: 'Solfeggio Healing', duration: '1 hr', searchUrl: 'https://www.youtube.com/results?search_query=396+hz+solfeggio+release+fear+guilt+negativity&sp=EgIYBA%3D%3D', tag: 'Solfeggio' },
+      { title: 'I Am Affirmations — Identity Shift', channel: 'Affirmation Meditation', duration: '15 min', searchUrl: 'https://www.youtube.com/results?search_query=i+am+affirmations+identity+shift+subconscious+reprogramming&sp=EgIYBA%3D%3D', tag: 'Affirmations' },
     ],
   },
   {
@@ -126,10 +126,10 @@ const MEDITATION_VIDEOS = [
     glow: '#f59e0b',
     desc: 'Charge yourself with purpose and energy to dominate your day from the first breath.',
     videos: [
-      { title: '10-Min Morning Meditation — Rise & Conquer', channel: 'Mindful Movement', duration: '10 min', id: 'inpok4MKVLM', tag: 'Morning Power' },
-      { title: 'Wim Hof Breathing — Energy & Alertness', channel: 'Wim Hof Method', duration: '11 min', id: 'tybOi4hjZFQ', tag: 'Breathwork' },
-      { title: 'Binaural Beats Morning — Alpha to Beta', channel: 'Quadible Integrity', duration: '30 min', id: 'xRKPH8YQGTE', tag: 'Morning Activation' },
-      { title: '432 Hz — Full Body Positive Energy', channel: 'Meditative Mind', duration: '3 hr', id: 'JhLFRf4kXyM', tag: '432 Hz' },
+      { title: '10-Min Morning Meditation — Rise & Conquer', channel: 'Morning Power', duration: '10 min', searchUrl: 'https://www.youtube.com/results?search_query=10+minute+morning+meditation+energy+rise+conquer+power&sp=EgIYBA%3D%3D', tag: 'Morning Power' },
+      { title: 'Wim Hof Breathing — Energy & Alertness', channel: 'Wim Hof Method', duration: '11 min', searchUrl: 'https://www.youtube.com/results?search_query=wim+hof+breathing+technique+energy+alertness+tutorial&sp=EgIYBA%3D%3D', tag: 'Breathwork' },
+      { title: 'Binaural Beats Morning — Alpha to Beta', channel: 'Morning Activation', duration: '30 min', searchUrl: 'https://www.youtube.com/results?search_query=binaural+beats+morning+alpha+to+beta+activation+wake+up&sp=EgIYBA%3D%3D', tag: 'Morning Activation' },
+      { title: '432 Hz — Full Body Positive Energy', channel: 'Frequency Healing', duration: '3 hr', searchUrl: 'https://www.youtube.com/results?search_query=432+hz+full+body+positive+energy+morning+meditation&sp=EgIYBA%3D%3D', tag: '432 Hz' },
     ],
   },
   {
@@ -139,10 +139,10 @@ const MEDITATION_VIDEOS = [
     glow: '#0ea5e9',
     desc: 'Wind down completely and enter the deep, restorative sleep your body deserves.',
     videos: [
-      { title: '8-Hour Sleep Music — Delta Waves', channel: 'PowerThoughts Meditation', duration: '8 hr', id: 'rkZl5ghYMoQ', tag: 'Delta Waves' },
-      { title: 'Body Scan for Sleep — Progressive Relaxation', channel: 'The Mindful Movement', duration: '25 min', id: 'hYmMJ1oWpRs', tag: 'Sleep' },
-      { title: '174 Hz — Pain Relief & Relaxation', channel: 'Meditative Mind', duration: '3 hr', id: 'FNtMoXKR0Qk', tag: 'Solfeggio' },
-      { title: 'Guided Sleep Meditation — Let Go of Worry', channel: 'Jason Stephenson', duration: '45 min', id: 'ezEo0r7BPEM', tag: 'Stress Relief' },
+      { title: '8-Hour Sleep Music — Delta Waves', channel: 'Deep Sleep', duration: '8 hr', searchUrl: 'https://www.youtube.com/results?search_query=8+hour+sleep+music+delta+waves+deep+sleep&sp=EgIYBA%3D%3D', tag: 'Delta Waves' },
+      { title: 'Body Scan for Sleep — Progressive Relaxation', channel: 'Sleep Meditation', duration: '25 min', searchUrl: 'https://www.youtube.com/results?search_query=body+scan+sleep+progressive+muscle+relaxation+guided&sp=EgIYBA%3D%3D', tag: 'Sleep' },
+      { title: '174 Hz — Pain Relief & Deep Relaxation', channel: 'Solfeggio Sleep', duration: '3 hr', searchUrl: 'https://www.youtube.com/results?search_query=174+hz+solfeggio+pain+relief+relaxation+sleep&sp=EgIYBA%3D%3D', tag: 'Solfeggio' },
+      { title: 'Guided Sleep Meditation — Let Go of Worry', channel: 'Relaxation Meditation', duration: '45 min', searchUrl: 'https://www.youtube.com/results?search_query=guided+sleep+meditation+let+go+worry+stress+relief&sp=EgIYBA%3D%3D', tag: 'Stress Relief' },
     ],
   },
   {
@@ -152,10 +152,10 @@ const MEDITATION_VIDEOS = [
     glow: '#10b981',
     desc: 'Classic, unguided meditation sessions. Sit. Breathe. Be.',
     videos: [
-      { title: 'OM Chanting — 108 Times for Meditation', channel: 'Meditative Mind', duration: '60 min', id: 'cLR9eWfRl7A', tag: 'Mantra' },
-      { title: 'Tibetan Singing Bowls — 1 Hour', channel: 'Tibetan Healing Sounds', duration: '1 hr', id: 'vO6mMnWkCkU', tag: 'Sound Bath' },
-      { title: 'Zazen — Zen Meditation Session', channel: 'Tao Meditation', duration: '20 min', id: '7EBsCEEsTU4', tag: 'Zen' },
-      { title: 'Vipassana — Silent Mindfulness Meditation', channel: 'Goenka', duration: '45 min', id: 'sAoYorFEHhA', tag: 'Vipassana' },
+      { title: 'OM Chanting — 108 Times Mantra', channel: 'Sacred Sound', duration: '60 min', searchUrl: 'https://www.youtube.com/results?search_query=om+chanting+108+times+meditation+mantra&sp=EgIYBA%3D%3D', tag: 'Mantra' },
+      { title: 'Tibetan Singing Bowls — 1 Hour', channel: 'Sound Bath', duration: '1 hr', searchUrl: 'https://www.youtube.com/results?search_query=tibetan+singing+bowls+1+hour+meditation+healing&sp=EgIYBA%3D%3D', tag: 'Sound Bath' },
+      { title: 'Zazen — Zen Sitting Meditation', channel: 'Zen Practice', duration: '20 min', searchUrl: 'https://www.youtube.com/results?search_query=zazen+zen+sitting+meditation+mindfulness+practice&sp=EgIYBA%3D%3D', tag: 'Zen' },
+      { title: 'Vipassana — Silent Mindfulness Meditation', channel: 'Insight Meditation', duration: '45 min', searchUrl: 'https://www.youtube.com/results?search_query=vipassana+silent+mindfulness+meditation+insight&sp=EgIYBA%3D%3D', tag: 'Vipassana' },
     ],
   },
 ];
@@ -474,19 +474,17 @@ export function renderZen() {
               </div>
               <div class="grid grid-cols-1 gap-3 p-4 pt-2">
                 ${cat.videos.map((v) => `
-                  <a href="https://www.youtube.com/watch?v=${v.id}" target="_blank" rel="noopener noreferrer"
+                  <a href="${v.searchUrl}" target="_blank" rel="noopener noreferrer"
                      class="flex gap-3 p-3 rounded-xl transition-all group"
                      style="background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.05);">
-                    <!-- Thumbnail -->
-                    <div class="relative flex-shrink-0 w-24 rounded-lg overflow-hidden"
-                         style="aspect-ratio:16/9;background:#111;">
-                      <img src="https://img.youtube.com/vi/${v.id}/mqdefault.jpg"
-                           alt="${v.title}" loading="lazy"
-                           class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                    <!-- Gradient placeholder (no broken image tags) -->
+                    <div class="relative flex-shrink-0 w-24 rounded-lg overflow-hidden flex items-center justify-center"
+                         style="aspect-ratio:16/9;background:linear-gradient(135deg,${cat.color}22,${cat.glow}10);">
+                      <i class="fa-solid ${cat.icon}" style="color:${cat.color};font-size:1rem;opacity:0.6;"></i>
                       <div class="absolute inset-0 flex items-center justify-center">
                         <div class="w-7 h-7 rounded-full flex items-center justify-center"
-                             style="background:rgba(220,38,38,0.9);">
-                          <i class="fa-solid fa-play text-white" style="font-size:0.6rem;margin-left:2px;"></i>
+                             style="background:rgba(220,38,38,0.85);box-shadow:0 2px 8px rgba(220,38,38,0.4);">
+                          <i class="fa-solid fa-play text-white" style="font-size:0.55rem;margin-left:1px;"></i>
                         </div>
                       </div>
                     </div>
@@ -496,8 +494,9 @@ export function renderZen() {
                       <p class="text-slate-600 text-xs">${v.channel}</p>
                       <div class="flex items-center gap-2 mt-1.5">
                         <span class="text-xs px-1.5 py-0.5 rounded font-medium"
-                              style="background:${cat.color}15;color:${cat.color};font-size:0.6rem;">${v.tag}</span>
+                              style="background:${cat.color}18;color:${cat.color};font-size:0.6rem;">${v.tag}</span>
                         <span class="text-slate-700 text-xs">${v.duration}</span>
+                        <i class="fa-brands fa-youtube text-red-600/50 text-xs ml-auto"></i>
                       </div>
                     </div>
                   </a>
